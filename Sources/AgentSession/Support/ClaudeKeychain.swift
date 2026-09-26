@@ -10,6 +10,7 @@
 import Foundation
 import Security
 import ProcessRunner
+import FoundationExtensions
 
 /// Claude Code's OAuth credentials in the login Keychain.
 ///
@@ -44,7 +45,7 @@ public enum ClaudeKeychain {
     /// The tool prints the secret followed by a newline; the secret is Claude Code's JSON blob
     /// (or, in other setups, a bare token), which ``ClaudeCredentials`` reads.
     static func token(fromToolOutput data: Data) -> String? {
-        guard let text = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
+        guard let text = data.utf8String?.trimmed,
               !text.isEmpty else { return nil }
         return ClaudeCredentials.accessToken(fromKeychainData: Data(text.utf8))
     }
