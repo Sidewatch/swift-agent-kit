@@ -9,6 +9,7 @@
 //
 
 import Foundation
+import FoundationExtensions
 
 /// Extracts the Claude Code OAuth access token from the raw bytes of its macOS
 /// Keychain item (`Claude Code-credentials`). Pure + lenient so it's testable off a

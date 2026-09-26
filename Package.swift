@@ -7,8 +7,11 @@ let package = Package(
     products: [
         .library(name: "AgentSession", targets: ["AgentSession"]),
     ],
+    dependencies: [
+        .package(path: "../swift-foundation-extensions"),
+    ],
     targets: [
-        .target(name: "AgentSession", path: "Sources",
+        .target(name: "AgentSession", dependencies: [.product(name: "FoundationExtensions", package: "swift-foundation-extensions")], path: "Sources",
                 swiftSettings: [.swiftLanguageMode(.v6)]),
         .testTarget(name: "AgentSessionTests", dependencies: ["AgentSession"], path: "Tests"),
     ]

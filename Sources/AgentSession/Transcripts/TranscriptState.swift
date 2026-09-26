@@ -9,6 +9,7 @@
 //
 
 import Foundation
+import FoundationExtensions
 
 /// The accumulated parse state for one Claude Code JSONL transcript: running cost and token
 /// totals, the current and peak context size, the model in use, and the message ids already
