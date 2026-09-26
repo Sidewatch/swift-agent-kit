@@ -9,6 +9,7 @@
 
 import Foundation
 import Security
+import ProcessRunner
 
 /// Claude Code's OAuth credentials in the login Keychain.
 ///
@@ -34,18 +35,10 @@ public enum ClaudeKeychain {
     /// not answered within five seconds (it is killed then, so a dialog it might raise for an
     /// item in some other partition cannot hang the caller). Off-main.
     public static func accessTokenViaSecurityTool(service: String = service) -> String? {
-        let tool = Process()
-        tool.executableURL = URL(fileURLWithPath: "/usr/bin/security")
-        tool.arguments = ["find-generic-password", "-s", service, "-w"]
-        let out = Pipe()
-        tool.standardOutput = out
-        tool.standardError = FileHandle.nullDevice
-        do { try tool.run() } catch { return nil }
-        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 5) { if tool.isRunning { tool.terminate() } }
-        let data = out.fileHandleForReading.readDataToEndOfFile()
-        tool.waitUntilExit()
-        guard tool.terminationStatus == 0 else { return nil }
-        return token(fromToolOutput: data)
+        let result = ProcessRunner.run("/usr/bin/security", ["find-generic-password", "-s", service, "-w"],
+                                       augmentPATH: false, timeout: 5)
+        guard result.succeeded else { return nil }
+        return token(fromToolOutput: result.stdout)
     }
 
     /// The tool prints the secret followed by a newline; the secret is Claude Code's JSON blob
