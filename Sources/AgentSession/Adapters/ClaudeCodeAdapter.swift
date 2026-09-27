@@ -39,8 +39,8 @@ public struct ClaudeCodeAdapter: AgentAdapter {
     /// Test seam: read transcripts from an arbitrary projects container.
     init(projectsRoot: URL) { self.projectsRoot = projectsRoot }
 
-    /// Whether Claude Code has recorded at least one `.jsonl` transcript for `root`.
-    public func hasSession(for root: URL) -> Bool { latestSessionFile(for: root) != nil }
+    /// The latest `.jsonl` transcript Claude Code recorded for `root`.
+    public func latestSession(for root: URL) -> URL? { latestSessionFile(for: root) }
 
     // MARK: - Locating the transcript
 

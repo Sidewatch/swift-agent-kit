@@ -24,8 +24,10 @@ public protocol AgentAdapter: Sendable {
     /// A human-readable name for the agent, e.g. `"Claude Code"`.
     var name: String { get }
 
-    /// Whether this agent has a recorded session for the given project root.
-    func hasSession(for root: URL) -> Bool
+    /// The agent's most recent session for `root` — a transcript file, or a folder for an agent
+    /// that stores a session as one — or nil when it has none. Its modification date is how the
+    /// most recently active of several agents is chosen.
+    func latestSession(for root: URL) -> URL?
 
     /// The activity timeline for `root`, oldest first.
     func events(for root: URL) -> [TimelineEvent]
@@ -42,4 +44,9 @@ public protocol AgentAdapter: Sendable {
 
     /// The edited-files roll-up for `root`, or `nil` when unavailable.
     func summary(for root: URL) -> AgentSummary?
+}
+
+public extension AgentAdapter {
+    /// Whether this agent has a recorded session for `root`.
+    func hasSession(for root: URL) -> Bool { latestSession(for: root) != nil }
 }

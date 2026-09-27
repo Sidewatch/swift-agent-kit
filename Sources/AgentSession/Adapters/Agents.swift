@@ -17,41 +17,46 @@ import Foundation
 /// ``AgentAdapter`` to ``all``.
 public enum Agents {
 
-    /// Every adapter known to the library, in detection order.
-    ///
-    /// **Claude Code only, deliberately.** An adapter written from a tool's published schema and
-    /// tested only against hand-typed fixtures is a guess that reports "no session" forever and
-    /// tells no one when the format drifts. Add an agent only with fixtures captured from a REAL
-    /// run of it (earlier Codex, Gemini CLI and OpenCode adapters are in git history).
+    /// Every adapter known to the library. An agent is added only with sanitized transcripts from
+    /// REAL runs to test against and its parser checked against the agent's own source — an
+    /// adapter written from a published schema alone reports "no session" forever when the
+    /// format drifts, and tells no one.
     public static let all: [AgentAdapter] = [
         ClaudeCodeAdapter(),
+        CodexAdapter(),
     ]
 
-    /// The first adapter that has a session for `root` (first match wins), or
-    /// `nil` when no known agent has one.
+    /// The adapter with this ``AgentAdapter/name``, if the library has one.
+    public static func adapter(named name: String) -> AgentAdapter? { all.first { $0.name == name } }
+
+    /// The agent whose session for `root` was active most recently, with that session, or nil
+    /// when no known agent has one. Several agents can work in one folder (a terminal each), so
+    /// "which one" is the latest to write, not a fixed order.
     public static func active(for root: URL) -> AgentAdapter? {
         active(for: root, in: all)
     }
 
-    /// Test seam: the same first-match detection over an explicit adapter list,
-    /// so tests can inject adapters rooted at a temp directory.
+    /// Test seam: ``active(for:)`` over an explicit adapter list.
     static func active(for root: URL, in adapters: [AgentAdapter]) -> AgentAdapter? {
-        adapters.first { $0.hasSession(for: root) }
+        adapters.compactMap { adapter in adapter.latestSession(for: root).map { (adapter, $0.modificationDate ?? .distantPast) } }
+            .max { $0.1 < $1.1 }?.0
     }
 
-    /// The first of `candidates`, in order, that some adapter has a session for —
-    /// with that adapter. Order candidates most specific first: the cwd of a
-    /// terminal running an agent (Claude Code files a transcript under its OWN cwd
-    /// at launch — whatever folder the shell happened to be in), then the opened
-    /// folder, its repo root, its parent. The opened folder alone misses an agent
-    /// launched from a subfolder.
-    public static func resolve(candidates: [URL]) -> (adapter: AgentAdapter, root: URL)? {
-        resolve(candidates: candidates, in: all)
+    /// The first of `candidates`, in order, that an agent has a session for — with that agent.
+    /// Order candidates most specific first: the cwd of a terminal running an agent (an agent
+    /// files its session under its OWN cwd at launch), then the opened folder, its repo root,
+    /// its parent. `preferring` names the agent to read when it has a session there — the one
+    /// running in the terminal the person is using — before falling back to the most recent.
+    public static func resolve(candidates: [URL], preferring agent: String? = nil) -> (adapter: AgentAdapter, root: URL)? {
+        resolve(candidates: candidates, preferring: agent, in: all)
     }
 
-    /// Test seam for ``resolve(candidates:)`` over an explicit adapter list.
-    static func resolve(candidates: [URL], in adapters: [AgentAdapter]) -> (adapter: AgentAdapter, root: URL)? {
+    /// Test seam for ``resolve(candidates:preferring:)`` over an explicit adapter list.
+    static func resolve(candidates: [URL], preferring agent: String? = nil, in adapters: [AgentAdapter]) -> (adapter: AgentAdapter, root: URL)? {
         for root in candidates {
+            if let agent, let preferred = adapters.first(where: { $0.name == agent }), preferred.hasSession(for: root) {
+                return (preferred, root)
+            }
             if let adapter = active(for: root, in: adapters) { return (adapter, root) }
         }
         return nil
