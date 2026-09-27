@@ -63,7 +63,7 @@ final class PersistedOutputTests: XCTestCase {
             #"{"type":"assistant","timestamp":"2026-09-24T10:00:00.000Z","message":{"id":"m1","content":[{"type":"tool_use","id":"tu_1","name":"Bash","input":{"command":"swift test"}}]}}"#,
             "{\"type\":\"user\",\"timestamp\":\"2026-09-24T10:00:05.000Z\",\"message\":{\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"tu_1\",\"content\":\"\(stubJSON)\"}]}}",
         ]
-        var state = TranscriptState()
+        var state = ClaudeTranscriptState()
         for line in lines { state.ingest(lineData: Data(line.utf8)) }
         let result = try XCTUnwrap(state.eventsResult.first { $0.toolUseID == "tu_1" }?.result)
         XCTAssertTrue(result.hasSuffix("Executed 12 tests, with 1 failure\n"), result.suffix(80).description)

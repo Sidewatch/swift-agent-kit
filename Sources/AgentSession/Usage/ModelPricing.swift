@@ -11,7 +11,7 @@
 import Foundation
 
 /// Per-million-token USD list prices by model family and generation, from Anthropic's published
-/// pricing page (platform.claude.com/docs/en/about-claude/pricing). Shared by ``TranscriptState``
+/// pricing page (platform.claude.com/docs/en/about-claude/pricing). Shared by ``ClaudeTranscriptState``
 /// and ``UsageAggregator`` so a session's cost never disagrees with the dashboard's total.
 /// Estimates only: 5-minute cache-write tier, no discounts, and a subscription is not billed per
 /// token. Prices change at fixed generations (Opus and Haiku 4.5, Sonnet 5, Fable's cache read
@@ -20,9 +20,15 @@ public enum ModelPricing {
     /// USD per million tokens for each kind of token.
     struct Rates: Equatable { let input, cacheWrite, cacheRead, output: Double }
 
-    /// The rates `model` is billed at, by family and generation; unknown families price as Sonnet.
+    /// The rates `model` is billed at, by family and generation. An unknown Claude family prices as
+    /// Sonnet; another vendor's model is not in this table and prices at zero, so no cost is shown
+    /// rather than a wrong one.
     static func rates(for model: String) -> Rates {
         let m = model.lowercased()
+        // `<synthetic>` is Claude Code's own placeholder id, so it is a Claude model too.
+        guard m.contains("claude") || m == "<synthetic>" || ["sonnet", "opus", "haiku", "fable", "mythos"].contains(where: m.contains) else {
+            return Rates(input: 0, cacheWrite: 0, cacheRead: 0, output: 0)
+        }
         let v = generation(of: m)
         if m.contains("fable") || m.contains("mythos") {
             // 5.1 reads its cache at 0.025× the input price ($0.25); 5.0 at the standard 0.1× ($1).

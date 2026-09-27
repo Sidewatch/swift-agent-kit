@@ -52,6 +52,14 @@ final class ModelPricingTests: XCTestCase {
         XCTAssertEqual(rates("<synthetic>"), [3, 3.75, 0.3, 15])
     }
 
+    /// Another vendor's model is not in this table: it prices at zero, so no cost is shown rather
+    /// than a Claude price on a Codex or Gemini session.
+    func testAnotherVendorsModelHasNoPrice() {
+        XCTAssertEqual(rates("gpt-5.1-codex"), [0, 0, 0, 0])
+        XCTAssertEqual(rates("gemini-3-pro"), [0, 0, 0, 0])
+        XCTAssertEqual(ModelPricing.cost(model: "grok-code-fast-1", input: 1_000_000, cacheWrite: 0, cacheRead: 0, output: 1_000_000), 0)
+    }
+
     func testCostAddsTheFourTiers() {
         let usd = ModelPricing.cost(model: "claude-opus-5", input: 1_000_000, cacheWrite: 1_000_000,
                                     cacheRead: 1_000_000, output: 1_000_000)

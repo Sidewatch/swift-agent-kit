@@ -16,26 +16,26 @@ import Darwin
 import Glibc
 #endif
 
-/// The incremental transcript cache behind ``ClaudeCodeAdapter``'s readers: one entry per
+/// The incremental transcript cache behind every adapter's readers: one entry per
 /// polled root mirrors its current transcript. Each poll `stat`s the file: unchanged → the
 /// memoized ``Snapshot`` (zero reads); grown → `pread` only the new bytes and fold complete
-/// lines into ``TranscriptState`` (an unterminated tail is parsed into a throwaway copy, and the
+/// lines into its `Parser` (an unterminated tail is parsed into a throwaway copy, and the
 /// offset never passes it); anything else (rotation, new inode, shrink, same-size rewrite) →
 /// one full re-parse. Every access is under one `NSLock`; a bad line is skipped on its own.
-final class TranscriptCache: @unchecked Sendable {
+final class TranscriptCache<Parser: TranscriptParsing>: @unchecked Sendable {
 
 
     /// The results one poll serves — all three readers' values, materialized
     /// once per parse so usage/events/summary always come from the same bytes.
     struct Snapshot: Sendable {
-        /// What ``ClaudeCodeAdapter/usage(for:)`` returns.
+        /// What an adapter's `usage(for:)` returns.
         let usage: AgentUsage?
-        /// What ``ClaudeCodeAdapter/events(for:)`` returns.
+        /// What an adapter's `events(for:)` returns.
         let events: [TimelineEvent]
-        /// What ``ClaudeCodeAdapter/summary(for:)`` returns.
+        /// What an adapter's `summary(for:)` returns.
         let summary: AgentSummary?
         /// The no-transcript / unreadable-transcript result.
-        static let empty = Snapshot(usage: nil, events: [], summary: nil)
+        static var empty: Snapshot { Snapshot(usage: nil, events: [], summary: nil) }
     }
 
     /// Cached incremental state for one project root's current transcript.
@@ -52,7 +52,7 @@ final class TranscriptCache: @unchecked Sendable {
         /// it never points past an unterminated trailing line.
         var offset: UInt64
         /// Parse state accumulated over all complete lines up to `offset`.
-        var durable: TranscriptState
+        var durable: Parser
         /// The memoized results (durable state + tentative trailing line).
         var snapshot: Snapshot
     }
@@ -100,7 +100,7 @@ final class TranscriptCache: @unchecked Sendable {
 
         var entry = entries[key].flatMap { $0.isPureAppend(file.path, stat) ? $0 : nil }
             ?? Entry(filePath: file.path, inode: stat.inode, mtime: stat.mtime, size: 0, offset: 0,
-                     durable: TranscriptState(), snapshot: .empty)
+                     durable: Parser(), snapshot: .empty)
         // Read exactly [offset, size): the appended bytes plus the prefix of an unterminated line
         // carried over from the previous poll. Bytes appended after our stat wait for the next poll.
         guard let appended = readAppended(path: file.path, entry: entry, size: stat.size) else {
@@ -126,7 +126,7 @@ final class TranscriptCache: @unchecked Sendable {
 
     /// The durable state plus a tentative parse of the unterminated tail — what a full re-parse
     /// would see too.
-    private static func snapshot(durable: TranscriptState, tail: Data) -> Snapshot {
+    private static func snapshot(durable: Parser, tail: Data) -> Snapshot {
         var served = durable
         if !tail.isEmpty { served.ingest(lineData: tail) }
         return Snapshot(usage: served.usageResult, events: served.eventsResult, summary: served.summaryResult)

@@ -171,7 +171,7 @@ final class TranscriptFixtureTests: XCTestCase {
         }
         let tools = ClaudeCodeAdapter().events(fromSession: try fixture(lines)).filter { $0.kind == .toolUse }
         XCTAssertEqual(tools.count, 400, "every event of a long prompt is kept")
-        XCTAssertLessThanOrEqual(tools[0].result?.count ?? .max, TranscriptState.olderResultCap + 1, "an old event's output is trimmed")
+        XCTAssertLessThanOrEqual(tools[0].result?.count ?? .max, EventBuffer.olderResultCap + 1, "an old event's output is trimmed")
         XCTAssertTrue(tools[0].result?.hasSuffix("Executed 3 tests") == true, "…to its end, where the summary is")
         XCTAssertTrue(tools[399].result?.hasSuffix("Executed 3 tests") == true && (tools[399].result?.count ?? 0) > 5_000, "a recent one is whole")
     }

@@ -73,9 +73,9 @@ public struct TimelineEvent: Equatable, Sendable {
     }
     /// The usage and the model of the message this event came from; nil for the message's
     /// later events and for user prompts. Summing a turn's events gives the turn's bill.
-    public let usage: Usage?
+    public internal(set) var usage: Usage?
     /// The model id that message ran on, alongside `usage`.
-    public let model: String?
+    public internal(set) var model: String?
     /// The agent's tool-call id (`tool_use.id`), so a later `tool_result` can be matched to it.
     public let toolUseID: String?
 

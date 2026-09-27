@@ -28,7 +28,7 @@ public struct ClaudeCodeAdapter: AgentAdapter {
 
     /// The incremental transcript cache backing the three readers. A reference
     /// type on purpose: copies of this adapter value share the one cache.
-    private let cache = TranscriptCache()
+    private let cache = TranscriptCache<ClaudeTranscriptState>()
 
     /// Creates an adapter that reads the real `~/.claude/projects` container.
     public init() {
@@ -72,8 +72,8 @@ public struct ClaudeCodeAdapter: AgentAdapter {
         cache.results(for: root, file: latestSessionFile(for: root)).usage
     }
 
-    /// The activity timeline parsed from the latest transcript, oldest first,
-    /// capped to the most recent 300 events. Malformed lines are skipped.
+    /// The activity timeline parsed from the latest transcript, oldest first, capped to the most
+    /// recent ``EventBuffer/cap`` events. Malformed lines are skipped.
     /// - Note: The *first* call on a large session parses the whole file, so call off the
     ///   main thread.
     public func events(for root: URL) -> [TimelineEvent] {

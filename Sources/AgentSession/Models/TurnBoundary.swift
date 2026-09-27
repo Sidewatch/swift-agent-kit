@@ -47,7 +47,7 @@ public struct TurnBoundary: Equatable {
     public var count: Int { end - start + 1 }
 
     /// A stable identifier for the turn: FNV-1a over its opening prompt and timestamp, stable
-    /// across relaunches and ref-name-safe. Must not be a position (`TranscriptState` trims
+    /// across relaunches and ref-name-safe. Must not be a position (`ClaudeTranscriptState` trims
     /// events from the FRONT, shifting every index and orphaning persisted checkpoints) nor
     /// `hashValue` (seeded per process).
     /// - Note: The timestamp is only `HH:mm`, so two turns opened by the SAME text in the same
