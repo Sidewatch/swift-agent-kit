@@ -103,3 +103,36 @@ final class PromptSourceTests: XCTestCase {
         XCTAssertEqual(TurnBoundary(start: 5, end: 9, prompt: "", timestamp: "").transcript(in: e), "")
     }
 }
+
+final class TurnSearchTests: XCTestCase {
+    private let events = [
+        TimelineEvent(
+            kind: .userPrompt, title: "You", detail: "Fix the parser", filePath: nil, timestamp: "10:00",
+            fullText: "Fix the parser\nand keep the CRLF tests"),
+        TimelineEvent(
+            kind: .assistantText, title: "Claude", detail: "Done", filePath: nil, timestamp: "10:01",
+            fullText: "Done.\nThe café menu works."),
+        TimelineEvent(kind: .fileEdit, title: "Edit", detail: "a.swift", filePath: "/w/Sources/Parser.swift", timestamp: "10:01"),
+        TimelineEvent(
+            kind: .toolUse, title: "Bash", detail: "swift test", filePath: nil, timestamp: "10:02", command: "swift test --filter CRLF"),
+    ]
+
+    func testATurnMatchesAnythingItSaidOrDid() throws {
+        let turn = try XCTUnwrap(TurnBoundary.turns(in: events).first)
+        XCTAssertTrue(turn.matches("crlf", in: events), "the prompt's second line, not only the first")
+        XCTAssertTrue(turn.matches("CAFE", in: events), "a reply, case and accents ignored")
+        XCTAssertTrue(turn.matches("Parser.swift", in: events), "a file the turn edited")
+        XCTAssertTrue(turn.matches("--filter", in: events), "a command it ran")
+        XCTAssertTrue(turn.matches("parser tests", in: events), "every word, anywhere in the turn")
+        XCTAssertFalse(turn.matches("parser rust", in: events), "a word the turn never mentions")
+        XCTAssertTrue(turn.matches("   ", in: events), "an empty query matches")
+        let titled = [
+            TimelineEvent(
+                kind: .userPrompt, title: "Claude Code", detail: "Agent \"Research\" finished", filePath: nil, timestamp: "",
+                fullText: "<task-notification>…</task-notification>", source: .agent)
+        ]
+        XCTAssertTrue(
+            try XCTUnwrap(TurnBoundary.turns(in: titled).first).matches("research", in: titled), "the row's own line, beside the full text")
+        XCTAssertFalse(TurnBoundary(start: 7, end: 9, prompt: "", timestamp: "").matches("x", in: events))
+    }
+}
