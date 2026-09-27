@@ -4,7 +4,7 @@ What a terminal is doing: idle, running something, running a coding agent, waiti
 
 Extracted from Sidewatch. Recognises Claude Code, Codex, Gemini CLI, OpenCode, Aider, Hermes, Grok and pi.
 
-> **Note (11 Sep 2026):** the hook-fed half was removed. This reads the process table and the screen and nothing else, so it needs nothing installed and has no config file to go stale. The row models that fed a rail (`TerminalSummary`, `SubagentSummary`, `AgentActivity`) went with it.
+> **Note:** there are no hooks. This reads the process table and the screen and nothing else, so it needs nothing installed and has no config file to go stale.
 
 ## Features
 

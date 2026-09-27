@@ -45,7 +45,7 @@ final class AgentStatusTests: XCTestCase {
             ("agent output, nothing asked", ["Found 3 TODO comments in src/:", "- src/main.py:7 — read config_path from argv"], nil),
             ("numbered list without cursor is not a prompt", ["1. Initial commit", "2. Added parser"], nil),
             ("empty screen", ["", "", ""], nil),
-            // Claude Code 2.1.2xx shapes (24 Sep 2026, herdr's manifest checked against real screens).
+            // Claude Code 2.1.2xx shapes, checked against real screens.
             ("mcp elicitation", ["MCP server \"github\" requests your input", "  Repository name: ", "  ❯ Accept   Decline"], .waitingForInput),
             ("dynamic workflow confirmation", ["Run a dynamic workflow?", "  This will start 6 agents.", "  ❯ 1. Yes", "    2. No"], .waitingForInput),
             ("plan approval footer", ["Ready to code?", "  Here is the plan…", "  ↑/↓ to navigate · enter to confirm · esc to cancel"], .waitingForInput),
@@ -117,7 +117,7 @@ final class AgentStatusTests: XCTestCase {
         for (args, want) in cases { XCTAssertEqual(AgentProcess.commandName(fromArgs: args), want, args ?? "nil") }
     }
 
-    // MARK: - The agents added 26 Sep 2026 (David, from Omarchy's harness list)
+    // MARK: - Short and newer agent names
 
     func testTheNewlyListedAgentsAreRecognisedByName() {
         for name in ["crush", "antigravity", "ori", "droid", "pi"] {

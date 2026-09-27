@@ -10,13 +10,10 @@
 
 import Foundation
 
-/// One compiler or linter diagnostic, parsed from a line of terminal output.
-///
-/// This is the windshield's shape exactly: the build already said it, on screen, and then it
-/// scrolled away. Nothing here runs the build, decides what is worth fixing, or adds analysis
-/// of its own — it reads a fact the toolchain produced so a host can show it next to the line
-/// the toolchain named. **Never add a rule that infers a diagnostic the terminal did not
-/// print**; that is a linter, and the agent in the terminal already has one.
+/// One compiler or linter diagnostic, parsed from a line of terminal output, so a host can show
+/// it next to the line the toolchain named after it has scrolled away. It reads facts the
+/// toolchain printed and nothing more. **Never add a rule that infers a diagnostic the terminal
+/// did not print**; that is a linter, and the agent in the terminal already has one.
 public struct BuildDiagnostic: Equatable, Sendable {
 
     /// How the toolchain labelled it. Kept as the toolchain's own word, not re-ranked.

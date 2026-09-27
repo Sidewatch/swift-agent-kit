@@ -26,8 +26,7 @@ public enum ScreenStateClassifier {
         "do you want to proceed", "do you want to make this edit", "do you want to allow",
         "allow execution", "allow this", "allow once", "approve", "permission",
         "press enter to continue", "waiting for your", "what would you like to do",
-        // Claude Code 2.1.2xx (24 Sep 2026, from herdr's Claude manifest, checked against the
-        // real screens): a workflow's confirmation, and an MCP server's elicitation dialog.
+        // Claude Code 2.1.2xx: a workflow's confirmation, and an MCP server's elicitation dialog.
         "run a dynamic workflow", "requests your input",
     ]
     /// A dialog's footer: "esc to cancel" beside "enter to confirm" / "enter to select" is a

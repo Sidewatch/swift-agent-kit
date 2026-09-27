@@ -12,10 +12,9 @@
 
 import Foundation
 
-/// These travelled as loose parameters with nil defaults, and omitting one silently degraded
-/// the derivation — forget the args and an npm-installed agent reports `.running` — while every
-/// stale caller kept compiling. All `let`, no defaults, no memberwise silence: adding a field
-/// is a compile error at every construction site, which is the entire reason this exists.
+/// The pty's foreground process, as ONE value for ``TerminalStatus/derive(foreground:unseenCompletion:attention:)``.
+/// All `let`, no defaults: adding a field is a compile error at every construction site, so no
+/// caller can silently omit one (forget the args and an npm-installed agent reports `.running`).
 public struct ForegroundInfo: Equatable, Sendable {
     /// Whether a foreground program is running (foreground pgid ≠ the shell's).
     public let isBusy: Bool
@@ -25,10 +24,8 @@ public struct ForegroundInfo: Equatable, Sendable {
     public let processPath: String?
     /// Its argv — how an npm/pip-installed agent hiding inside `node`/`python` is recognised.
     public let processArgs: String?
+    /// Every field, explicitly — there are deliberately no defaults.
     public init(isBusy: Bool, process: String?, processPath: String?, processArgs: String?) {
         self.isBusy = isBusy; self.process = process; self.processPath = processPath; self.processArgs = processArgs
     }
 }
-
-/// An unacknowledged signal from the agent running in a terminal.
-///

@@ -10,11 +10,9 @@
 
 import Foundation
 
-/// The rule behind an "agent needs you" / "agent finished" notification (24 Sep 2026, after
-/// reading herdr: it notifies for a blocked or finished pane and suppresses the popup for the
-/// tab you are looking at). A notification is for a state the person cannot see: the app is in
-/// the background, or the pane is not on screen. One is never posted for the pane in front of
-/// them — the tab badge already says it.
+/// The rule behind an "agent needs you" / "agent finished" notification. A notification is for
+/// a state the person cannot see: the app is in the background, or the pane is not on screen.
+/// One is never posted for the pane in front of them — the tab badge already says it.
 public enum AttentionNotice: Equatable, Sendable {
     /// A prompt is on screen waiting for an answer.
     case needsYou(prompt: String?)

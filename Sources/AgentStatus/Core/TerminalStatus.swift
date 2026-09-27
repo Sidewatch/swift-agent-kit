@@ -11,7 +11,7 @@
 
 import Foundation
 
-/// Derived from signals Sidewatch already has locally — the pty's foreground process group and
+/// What a terminal is doing, derived from signals the host already has locally — the pty's foreground process group and
 /// its name — rather than from anything the agent tells us. That is the point: it works for any
 /// agent CLI, and for a plain shell running a build, without integration on the other side.
 public enum TerminalStatus: Equatable, Sendable {
@@ -42,7 +42,7 @@ public enum TerminalStatus: Equatable, Sendable {
     /// Process names treated as agents. Matched case-insensitively against the pty's foreground
     /// process name, and by prefix up to a word boundary so versioned or suffixed binaries
     /// (`claude-code`, `codex-cli`, `claude2`) still count while `amplify` and `ampl` — programs
-    /// that merely START with "amp" — do not (18 Sep 2026).
+    /// that merely START with "amp" — do not.
     ///
     /// A deliberate whitelist: guessing from the process name alone would catch `node` and
     /// `python`, which run half the tools on a developer's machine, and a terminal wrongly
@@ -53,30 +53,13 @@ public enum TerminalStatus: Equatable, Sendable {
     ]
 
     /// Agents whose name is an ordinary English stem, matched by equality only at every tier.
-    ///
-    /// Note what this does and does not buy, because the original comment here was stale: since
-    /// the word-boundary rule of 18 Sep 2026, prefix matching ALREADY declines `pip`, `ping`,
-    /// `pigz`, `origin` and `droidcam`, because the character after the stem is a letter. What
-    /// equality adds is the rest — `pi2`, `ori-2`, `droid.old` — where a non-letter follows and
-    /// the prefix rule would say yes. For a two- or three-letter stem that is a real risk and
-    /// the agent gains nothing from the looseness, since these tools ship under their bare name.
-    ///
-    /// Amazon Q's `q` is deliberately NOT here. A single letter is a name other tools use — `q`
-    /// is also a well-known CSV/JSON query tool — and this list decides whether a pane says an
-    /// agent is running, whether closing it asks first, and whether a notification fires. A
-    /// windshield may show nothing; it may not show something untrue. Add it only with a way to
-    /// tell the two apart.
+    /// The word-boundary prefix rule already declines `pip` or `origin`; equality also declines
+    /// `pi2`, `ori-2`, `droid.old`, which a short stem cannot afford and these tools never need.
+    /// Amazon Q's `q` is deliberately absent: `q` is also a CSV/JSON query tool, and this list
+    /// decides whether a pane claims an agent, asks before closing, and notifies. Add it only
+    /// with a way to tell the two apart.
     public static let exactAgentProcessNames: Set<String> = ["pi", "ori", "droid"]
 
-    /// Whether the foreground program is an agent, by name OR by executable path.
-    ///
-    /// The path matters more than the name, which is the opposite of what you would expect.
-    /// Claude Code's native installer runs `~/.local/share/claude/versions/2.1.223` — the
-    /// executable IS the version number, so `proc_name` reports "2.1.223" and no list of program
-    /// names can ever match it. The directory it lives in is the part that identifies it.
-    ///
-    /// Checking path COMPONENTS rather than a substring, so a project that happens to be called
-    /// `claude-notes` does not make every shell in it look like an agent.
     /// Runtimes that tell you nothing on their own. An agent installed from npm or pip runs as
     /// one of these, so its identity is only in its ARGUMENTS — and reading those is worth it
     /// only here, never for a process that already named itself.
@@ -95,28 +78,25 @@ public enum TerminalStatus: Equatable, Sendable {
     ]
 
     /// `name` is `agent`, or `agent` followed by something that is not a letter (`claude-code`,
-    /// `codex-cli`, `claude2`). A bare `hasPrefix` made `amplify` (AWS) and `ampl` read as the
-    /// agent `amp`, and a terminal running either showed "Working".
+    /// `codex-cli`, `claude2`). Must not be a bare `hasPrefix`: `amplify` (AWS) and `ampl` would
+    /// read as the agent `amp`.
     static func hasAgentPrefix(_ name: String, _ agent: String) -> Bool {
         guard name.hasPrefix(agent) else { return false }
         guard let next = name.dropFirst(agent.count).first else { return true }
         return !next.isLetter
     }
 
+    /// Whether `name` is one of ``genericRuntimes``, so only its arguments can identify it.
     public static func isGenericRuntime(_ name: String?) -> Bool {
         guard let name = name?.lowercased() else { return false }
         return genericRuntimes.contains(name)
     }
 
-    /// Whether the foreground program is an agent, by name, executable path, or arguments.
-    ///
-    /// Three tiers because agents install three ways:
+    /// Whether the foreground program is an agent, by name, executable path, or arguments —
+    /// three tiers because agents install three ways:
     ///   - `/usr/local/bin/codex`             → the NAME says it
     ///   - `.../claude/versions/2.1.223`      → only the PATH says it (the binary is a version)
     ///   - `node .../@openai/codex/cli.js`    → only the ARGUMENTS say it
-    ///
-    /// Without all three, whichever way you happened to install decides whether Sidewatch can
-    /// see your agent, which is not a distinction a user would ever guess at.
     public static func isAgentProcess(_ name: String?, path: String? = nil, args: String? = nil) -> Bool {
         if let name = name?.lowercased(), !name.isEmpty,
            exactAgentProcessNames.contains(name)
@@ -127,8 +107,7 @@ public enum TerminalStatus: Equatable, Sendable {
             let tokens = Set(args.split(whereSeparator: { "/\\ \t@".contains($0) }).map(String.init))
             // `exactAgentProcessNames` belongs here too: these are whole tokens already, so
             // there is no prefix to be loose about, and without them an agent installed under a
-            // runtime (`node …/pi/cli.js`) was invisible to every tier — the exact gap the three
-            // tiers exist to close.
+            // runtime (`node …/pi/cli.js`) is invisible to every tier.
             if (agentProcessNames + agentPackageNames).contains(where: { tokens.contains($0) })
                 || exactAgentProcessNames.contains(where: { tokens.contains($0) }) { return true }
         }
@@ -142,20 +121,11 @@ public enum TerminalStatus: Equatable, Sendable {
             || exactAgentProcessNames.contains { components.contains($0) }
     }
 
-    /// The whole rule, in one place.
-    ///
-    /// A free function rather than a computed property on `TerminalController` so the test can
-    /// call the REAL derivation instead of a copy of it. A probe that restates the rule agrees
-    /// with itself no matter what the app does, which is how a wrong rule survives a green test.
-    ///
-    /// Precedence, top down: an unacknowledged attention signal outranks EVERYTHING — a waiting
-    /// agent is still "busy" in the process table, so the screen's verdict must outrank busy or
-    /// it could never show. Below that, busy outranks the transition-derived completion flag: a
-    /// terminal that has started new work is working, whatever it finished a moment ago.
-    ///
-    /// No parameter has a default. Three of these used to default to nil, and omitting one
-    /// silently degraded the answer — forget `attention:` and a waiting agent reports `.agent` —
-    /// with nothing for the compiler to catch. See ``ForegroundInfo``.
+    /// The whole rule, in one place, so a test calls the REAL derivation rather than a copy.
+    /// Precedence: an unacknowledged attention signal outranks everything (a waiting agent is
+    /// still busy in the process table); then busy outranks the completion flag, since a
+    /// terminal that has started new work is working. No parameter has a default: omitting one
+    /// would silently degrade the answer with nothing for the compiler to catch.
     public static func derive(foreground fg: ForegroundInfo, unseenCompletion: Bool,
                        attention: TerminalAttention?) -> TerminalStatus {
         if attention == .waiting { return .waiting }
@@ -195,8 +165,7 @@ public enum TerminalStatus: Equatable, Sendable {
     }
 
     /// Sort rank: what needs you first. Finished agents outrank working ones because a finished
-    /// agent is BLOCKED on you and a working one is not — the rail's whole job is to surface
-    /// which terminal is waiting.
+    /// agent is BLOCKED on you and a working one is not.
     public var priority: Int {
         switch self {
         // Waiting outranks finished: both want you, but a waiting agent is STALLED — nothing
@@ -209,6 +178,3 @@ public enum TerminalStatus: Equatable, Sendable {
         }
     }
 }
-
-/// The pty's foreground process, as ONE value for ``TerminalStatus/derive(foreground:unseenCompletion:attention:)``.
-///
