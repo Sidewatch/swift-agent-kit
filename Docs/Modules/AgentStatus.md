@@ -60,6 +60,6 @@ module map.
 
 ## License
 
-MIT © 2026 David Sherlock (ArrayPress)
+MIT © 2026 ArrayPress Limited
 
 `ScreenStateClassifier.promptLine(_:)` names the line that makes a screen a prompt (the question above a cursor, a y/n, an MCP elicitation, a dialog footer with "enter to confirm · esc to cancel"), and `AttentionNotice` is the rule for notifying about it: on, and only when the app is in the background or the pane is off screen — never for the pane in front of the person.
