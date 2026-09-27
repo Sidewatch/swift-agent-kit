@@ -1,11 +1,12 @@
 //
 //  AgentAdapter.swift
-//  SwiftAgentSession
+//  AgentSession
 //
 //  The read-only bridge between a CLI coding agent's on-disk session transcript
 //  and the agent-agnostic model. Implement one per agent.
 //
 //  Created by David Sherlock on 7/9/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

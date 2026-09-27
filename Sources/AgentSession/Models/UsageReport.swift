@@ -6,6 +6,7 @@
 //  (Codex, …) can produce the same shape.
 //
 //  Created by David Sherlock on 7/19/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

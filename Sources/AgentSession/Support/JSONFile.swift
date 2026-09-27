@@ -5,6 +5,7 @@
 //  Reading JSON the way agent transcripts store it: whole-file objects, and one line's bytes.
 //
 //  Created by David Sherlock on 9/5/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

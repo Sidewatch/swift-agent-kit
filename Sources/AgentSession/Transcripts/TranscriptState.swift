@@ -1,11 +1,12 @@
 //
 //  TranscriptState.swift
-//  SwiftAgentSession
+//  AgentSession
 //
 //  The accumulated parse state for one Claude Code JSONL transcript: per-line
 //  ingestion plus materialization of the usage / events / summary results.
 //
 //  Created by David Sherlock on 7/16/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

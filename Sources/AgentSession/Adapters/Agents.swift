@@ -1,11 +1,12 @@
 //
 //  Agents.swift
-//  SwiftAgentSession
+//  AgentSession
 //
 //  The adapter registry and project auto-detection entry point. Add support for
 //  an agent by appending its adapter to `all`.
 //
 //  Created by David Sherlock on 7/9/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

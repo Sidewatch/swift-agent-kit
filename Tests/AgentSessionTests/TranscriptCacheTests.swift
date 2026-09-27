@@ -1,11 +1,14 @@
 //
 //  TranscriptCacheTests.swift
+//  AgentSessionTests
+//
 //  Tests for the incremental transcript cache behind ClaudeCodeAdapter:
 //  appended-bytes parsing parity with a full re-parse, partial trailing lines
 //  across polls, the zero-read unchanged fast path, shrink/rotation recovery,
 //  and the per-adapter cache lifetime.
 //
 //  Created by David Sherlock on 7/16/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import XCTest

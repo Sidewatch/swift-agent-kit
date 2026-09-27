@@ -6,6 +6,7 @@
 //  `~/.claude/projects/*/*.jsonl` — the data behind the Usage tab's local half.
 //
 //  Created by David Sherlock on 7/19/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

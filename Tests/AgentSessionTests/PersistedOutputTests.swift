@@ -5,6 +5,7 @@
 //  A spilled tool result is read back from its file's tail; anything else is left alone.
 //
 //  Created by David Sherlock on 9/24/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import XCTest

@@ -5,6 +5,7 @@
 //  A call counter the fetch closures can share without capturing the test case.
 //
 //  Created by David Sherlock on 9/5/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import XCTest

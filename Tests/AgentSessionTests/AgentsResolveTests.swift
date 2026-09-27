@@ -6,6 +6,7 @@
 //  terminal cwd deep inside the project still resolves to the opened root.
 //
 //  Created by David Sherlock on 9/2/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import XCTest

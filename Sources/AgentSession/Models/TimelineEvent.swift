@@ -1,11 +1,12 @@
 //
 //  TimelineEvent.swift
-//  SwiftAgentSession
+//  AgentSession
 //
 //  A single entry in an agent's activity timeline — a user prompt, a line of
 //  assistant text, a tool call, or a file edit — in the agent-agnostic model.
 //
 //  Created by David Sherlock on 7/9/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

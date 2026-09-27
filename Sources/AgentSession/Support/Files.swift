@@ -5,6 +5,7 @@
 //  Directory questions every adapter asks.
 //
 //  Created by David Sherlock on 9/5/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

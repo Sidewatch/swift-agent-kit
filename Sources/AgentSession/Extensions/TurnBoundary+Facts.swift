@@ -1,10 +1,11 @@
 //
 //  TurnBoundary+Facts.swift
-//  SwiftAgentSession
+//  AgentSession
 //
 //  The facts a turn's own events carry beyond the files it edited: its effort and its plan.
 //
 //  Created by David Sherlock on 9/22/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

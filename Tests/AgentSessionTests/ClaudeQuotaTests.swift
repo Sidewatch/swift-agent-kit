@@ -5,6 +5,7 @@
 //  The real /api/oauth/usage shape (from community reverse-engineering).
 //
 //  Created by David Sherlock on 7/19/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import XCTest

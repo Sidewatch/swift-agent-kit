@@ -1,11 +1,12 @@
 //
 //  TurnEffortTests.swift
-//  Tests for SwiftAgentSession
+//  AgentSessionTests
 //
 //  Tests for a turn's effort: tool calls counted, the last model kept, the cost summed at the
 //  messages' own usage, and the row labels.
 //
 //  Created by David Sherlock on 9/22/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import XCTest

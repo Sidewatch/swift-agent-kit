@@ -6,6 +6,7 @@
 //  shape, the flat shape, and malformed data.
 //
 //  Created by David Sherlock on 7/19/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import XCTest

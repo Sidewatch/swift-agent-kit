@@ -5,6 +5,7 @@
 //  A token or byte count at a glance: `999`, `1.5K`, `2.5M`, `3.0B`.
 //
 //  Created by David Sherlock on 9/5/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

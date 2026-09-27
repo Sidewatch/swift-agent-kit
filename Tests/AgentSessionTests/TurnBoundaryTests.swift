@@ -1,11 +1,12 @@
 //
 //  TurnBoundaryTests.swift
-//  Tests for SwiftAgentSession
+//  AgentSessionTests
 //
 //  Tests for `TurnBoundary`: turns split on every user prompt, ids are stable across re-parses,
 //  and each turn knows the files it edited.
 //
 //  Created by David Sherlock on 7/25/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import XCTest

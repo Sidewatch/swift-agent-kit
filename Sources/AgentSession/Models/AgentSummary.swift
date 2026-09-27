@@ -1,11 +1,12 @@
 //
 //  AgentSummary.swift
-//  SwiftAgentSession
+//  AgentSession
 //
 //  A roll-up of what the agent has done this session — the files it edited and
 //  its current to-do list — for the Plan-vs-Actual view.
 //
 //  Created by David Sherlock on 7/9/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

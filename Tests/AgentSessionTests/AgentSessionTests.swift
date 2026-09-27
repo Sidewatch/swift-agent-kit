@@ -1,11 +1,12 @@
 //
 //  AgentSessionTests.swift
-//  Tests for SwiftAgentSession
+//  AgentSessionTests
 //
 //  End-to-end tests for `ClaudeCodeAdapter` over a synthetic projects root: transcript location
 //  by encoded project path, event parsing, and session selection.
 //
 //  Created by David Sherlock on 7/9/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import XCTest

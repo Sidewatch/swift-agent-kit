@@ -5,6 +5,7 @@
 //  What the `security` tool prints is the blob plus a newline; nothing, or noise, is no token.
 //
 //  Created by David Sherlock on 9/18/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import XCTest

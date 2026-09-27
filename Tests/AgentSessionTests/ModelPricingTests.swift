@@ -5,6 +5,7 @@
 //  The per-generation list prices against the published table, by the ids Claude Code writes.
 //
 //  Created by David Sherlock on 9/18/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import XCTest

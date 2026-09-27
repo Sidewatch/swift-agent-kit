@@ -1,11 +1,12 @@
 //
 //  ClaudeCodeAdapter.swift
-//  SwiftAgentSession
+//  AgentSession
 //
 //  The Claude Code adapter: reads `~/.claude/projects/<encoded-cwd>/<session>.jsonl`
 //  (read-only) and maps it onto the agent-agnostic model. The reference adapter.
 //
 //  Created by David Sherlock on 7/9/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

@@ -1,10 +1,11 @@
 //
 //  TurnEffort+Display.swift
-//  SwiftAgentSession
+//  AgentSession
 //
 //  The short labels a row shows for a turn's effort: "opus 5", "$0.42".
 //
 //  Created by David Sherlock on 9/22/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

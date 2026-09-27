@@ -1,12 +1,13 @@
 //
 //  TranscriptFixtureTests.swift
-//  Tests for SwiftAgentSession
+//  AgentSessionTests
 //
 //  Exercises the PARSING half of an adapter against a fixture, with no live agent session and
 //  no `~/.claude` on disk — the property that lets an adapter for an agent you haven't
 //  installed be written and kept honest.
 //
 //  Created by David Sherlock on 7/25/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import XCTest

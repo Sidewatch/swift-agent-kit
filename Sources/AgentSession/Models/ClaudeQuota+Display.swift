@@ -6,6 +6,7 @@
 //  model weekly cap is `Weekly · Model`, and an unknown key reads as its words.
 //
 //  Created by David Sherlock on 9/5/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

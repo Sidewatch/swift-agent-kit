@@ -1,11 +1,12 @@
 //
 //  TurnBoundary.swift
-//  SwiftAgentSession
+//  AgentSession
 //
 //  Splitting a flat timeline into agent turns — the run of events from one user prompt to
 //  just before the next.
 //
 //  Created by David Sherlock on 7/25/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

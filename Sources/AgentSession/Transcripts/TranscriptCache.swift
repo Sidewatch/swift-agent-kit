@@ -1,11 +1,12 @@
 //
 //  TranscriptCache.swift
-//  SwiftAgentSession
+//  AgentSession
 //
 //  The incremental transcript cache behind ClaudeCodeAdapter's readers: each
 //  poll costs O(appended bytes) instead of a full-file read + re-parse.
 //
 //  Created by David Sherlock on 7/16/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation
