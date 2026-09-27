@@ -46,12 +46,18 @@ struct TranscriptState {
 
     // MARK: - Events buffer
 
-    /// The public events cap: only the most recent 300 events are reported.
-    private static let eventCap = 300
+    /// The most recent events reported: enough for a long session's last several prompts (one
+    /// busy prompt can run hundreds of tool calls).
+    static let eventCap = 2_000
+    /// How many of the newest events keep their tool output whole; older ones keep its END,
+    /// where a test run's or build's summary sits, so the buffer's memory stays near what 300
+    /// whole events cost.
+    static let fullResultCount = 300
+    static let olderResultCap = 400
 
     /// The activity timeline, oldest first, trimmed live to ``eventCap`` so the
     /// buffer stays bounded no matter how long the session runs. Trimming as we
-    /// go is equivalent to parsing everything and taking `suffix(300)`.
+    /// go is equivalent to parsing everything and taking the suffix.
     private var events: [TimelineEvent] = []
 
     // MARK: - Summary accumulators
@@ -95,15 +101,42 @@ struct TranscriptState {
         maxCtx = max(maxCtx, ctx)
     }
 
+    /// Whether a user-role line is something the person typed, from Claude Code's own marks: a
+    /// sub-agent's report (`origin.kind` "peer"), a background task's notice, a command's
+    /// output (`isMeta`) and the summary a compaction leaves (`isCompactSummary`) all ride on
+    /// user-role lines without being prompts. Nil for a transcript too old to carry the marks.
+    static func isTypedByPerson(_ obj: [String: Any]) -> Bool? {
+        if obj["isMeta"] as? Bool == true || obj["isCompactSummary"] as? Bool == true { return false }
+        guard let origin = obj["origin"] as? [String: Any], let kind = origin["kind"] as? String else { return nil }
+        return kind == "human"
+    }
+
+    /// A prompt's text without the wrapper a paste arrives in (`<pasted_content …>…`) or the
+    /// `[Image #4]` markers attached screenshots leave.
+    static func unwrapped(_ text: String) -> String {
+        text.replacingOccurrences(of: #"</?pasted_content[^>]*>|\[Image #\d+\]\s*"#, with: "", options: .regularExpression)
+    }
+
     /// Appends this line's timeline events (if any), keeping the buffer capped.
     private mutating func ingestEvent(_ obj: [String: Any]) {
+        // A message typed while the agent works is queued, then absorbed into the running turn:
+        // it has no user line of its own, and from that moment the agent works on it.
+        if obj["type"] as? String == "queue-operation", obj["operation"] as? String == "remove",
+           obj["reason"] as? String == "absorbed_mid_turn", let text = obj["content"] as? String {
+            append(TimelineEvent(kind: .userPrompt, title: String(localized: "You", bundle: .module, comment: "Timeline row title for a prompt the person typed to the agent"),
+                                 detail: Self.firstLine(Self.unwrapped(text)), filePath: nil, timestamp: Self.shortTime(obj["timestamp"] as? String)))
+            return
+        }
         guard let msg = obj["message"] as? [String: Any] else { return }
         let type = obj["type"] as? String ?? ""
         let ts = Self.shortTime(obj["timestamp"] as? String)
 
         if type == "user" {
-            if let s = msg["content"] as? String, !s.hasPrefix("<") {
-                append(TimelineEvent(kind: .userPrompt, title: "You", detail: Self.firstLine(s), filePath: nil, timestamp: ts))
+            let typed = Self.isTypedByPerson(obj)
+            if let s = msg["content"] as? String {
+                if typed ?? !s.hasPrefix("<") {
+                    append(TimelineEvent(kind: .userPrompt, title: String(localized: "You", bundle: .module, comment: "Timeline row title for a prompt the person typed to the agent"), detail: Self.firstLine(Self.unwrapped(s)), filePath: nil, timestamp: ts))
+                }
             } else if let arr = msg["content"] as? [[String: Any]] {
                 // Tool results ride back on a user message: attach each to its call by id.
                 for block in arr where (block["type"] as? String) == "tool_result" {
@@ -119,8 +152,8 @@ struct TranscriptState {
                     events[index].resultIsError = (block["is_error"] as? Bool) ?? false
                 }
                 let texts = arr.filter { ($0["type"] as? String) == "text" }.compactMap { $0["text"] as? String }
-                if !texts.isEmpty {
-                    append(TimelineEvent(kind: .userPrompt, title: "You", detail: Self.firstLine(texts.joined(separator: " ")), filePath: nil, timestamp: ts))
+                if !texts.isEmpty, typed ?? true {
+                    append(TimelineEvent(kind: .userPrompt, title: String(localized: "You", bundle: .module, comment: "Timeline row title for a prompt the person typed to the agent"), detail: Self.firstLine(Self.unwrapped(texts.joined(separator: " "))), filePath: nil, timestamp: ts))
                 }
             }
         } else if type == "assistant", let arr = msg["content"] as? [[String: Any]] {
@@ -165,6 +198,10 @@ struct TranscriptState {
     /// Appends one event and trims the buffer to the cap.
     private mutating func append(_ event: TimelineEvent) {
         events.append(event)
+        let aging = events.count - Self.fullResultCount - 1
+        if aging >= 0, let result = events[aging].result, result.count > Self.olderResultCap {
+            events[aging].result = "…" + String(result.suffix(Self.olderResultCap))
+        }
         if events.count > Self.eventCap { events.removeFirst(events.count - Self.eventCap) }
     }
 

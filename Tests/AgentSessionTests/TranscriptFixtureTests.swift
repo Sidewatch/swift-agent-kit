@@ -134,6 +134,48 @@ final class TranscriptFixtureTests: XCTestCase {
                        ["Add a retry", "Cap it at 30s"])
     }
 
+    /// Only what the person typed opens a turn. A sub-agent's report, a background task's
+    /// notice, a command's output and the summary a compaction leaves all arrive as user-role
+    /// lines; a paste arrives wrapped in a tag and is still a prompt. Shapes from a real session.
+    func testOnlyTypedMessagesArePrompts() throws {
+        let events = ClaudeCodeAdapter().events(fromSession: try fixture([
+            #"{"type":"user","origin":{"kind":"human"},"timestamp":"2026-09-27T10:00:00.000Z","message":{"content":"Tidy the models"}}"#,
+            #"{"type":"user","isMeta":true,"origin":{"kind":"peer","from":"a1"},"timestamp":"2026-09-27T10:01:00.000Z","message":{"content":[{"type":"text","text":"Another Claude session sent a message:\nDone."}]}}"#,
+            #"{"type":"user","origin":{"kind":"task-notification"},"timestamp":"2026-09-27T10:02:00.000Z","message":{"content":"<task-notification>done</task-notification>"}}"#,
+            #"{"type":"user","isCompactSummary":true,"isVisibleInTranscriptOnly":true,"timestamp":"2026-09-27T10:03:00.000Z","message":{"content":"This session is being continued from a previous conversation."}}"#,
+            #"{"type":"user","origin":{"kind":"human"},"timestamp":"2026-09-27T10:04:00.000Z","message":{"content":"<pasted_content id=\"x1\">Keep models lean</pasted_content> as above"}}"#,
+        ]))
+        XCTAssertEqual(events.filter { $0.kind == .userPrompt }.map(\.detail), ["Tidy the models", "Keep models lean as above"])
+    }
+
+    /// A message typed while the agent works is queued and then absorbed into the running turn;
+    /// the absorption is where it opens a turn (the enqueue alone is not: it may be delivered
+    /// normally later, as its own user line).
+    func testMessageAbsorbedMidTurnIsAPrompt() throws {
+        let events = ClaudeCodeAdapter().events(fromSession: try fixture([
+            #"{"type":"user","origin":{"kind":"human"},"timestamp":"2026-09-27T10:00:00.000Z","message":{"content":"Localise the app"}}"#,
+            #"{"type":"queue-operation","operation":"enqueue","timestamp":"2026-09-27T10:05:00.000Z","content":"[Image #4] the pill does nothing"}"#,
+            #"{"type":"queue-operation","operation":"remove","reason":"absorbed_mid_turn","timestamp":"2026-09-27T10:05:20.000Z","content":"[Image #4] the pill does nothing"}"#,
+        ]))
+        XCTAssertEqual(events.filter { $0.kind == .userPrompt }.map(\.detail), ["Localise the app", "the pill does nothing"])
+    }
+
+    /// A long session keeps its last 2,000 events; beyond the newest 300 a tool's output keeps
+    /// only its end, where a summary sits.
+    func testOlderEventsKeepTheEndOfTheirOutput() throws {
+        let body = String(repeating: "x", count: 5_000) + "\nExecuted 3 tests"
+        var lines = [#"{"type":"user","origin":{"kind":"human"},"timestamp":"2026-09-27T10:00:00.000Z","message":{"content":"Run it"}}"#]
+        for i in 0..<400 {
+            lines.append(#"{"type":"assistant","timestamp":"2026-09-27T10:00:01.000Z","message":{"content":[{"type":"tool_use","id":"t\#(i)","name":"Bash","input":{"command":"swift test"}}]}}"#)
+            lines.append(#"{"type":"user","timestamp":"2026-09-27T10:00:02.000Z","message":{"content":[{"type":"tool_result","tool_use_id":"t\#(i)","content":"BODY"}]}}"#.replacingOccurrences(of: "BODY", with: body.replacingOccurrences(of: "\n", with: "\\n")))
+        }
+        let tools = ClaudeCodeAdapter().events(fromSession: try fixture(lines)).filter { $0.kind == .toolUse }
+        XCTAssertEqual(tools.count, 400, "every event of a long prompt is kept")
+        XCTAssertLessThanOrEqual(tools[0].result?.count ?? .max, TranscriptState.olderResultCap + 1, "an old event's output is trimmed")
+        XCTAssertTrue(tools[0].result?.hasSuffix("Executed 3 tests") == true, "…to its end, where the summary is")
+        XCTAssertTrue(tools[399].result?.hasSuffix("Executed 3 tests") == true && (tools[399].result?.count ?? 0) > 5_000, "a recent one is whole")
+    }
+
     func testMalformedLinesAreSkippedNotFatal() throws {
         var lines = twoTurns
         lines.insert("not json at all", at: 2)

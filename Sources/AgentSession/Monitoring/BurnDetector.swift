@@ -86,7 +86,8 @@ public struct BurnDetector: Sendable, Equatable {
             signalledCount = 0
             return .ended
         }
-        let notice = "agent may be looping: \(latest.label) ×\(count)"
+        let notice = String(localized: "agent may be looping: \(latest.label) ×\(count)", bundle: .module,
+                            comment: "Status-bar notice; the first argument is the repeated command, the second how many times in a row it ran")
         if signalledKey == latest.key {
             guard count != signalledCount else { return .none }
             signalledCount = count

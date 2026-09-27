@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "AgentSession",
+    defaultLocalization: "en",
     platforms: [.macOS(.v14)],
     products: [
         .library(name: "AgentSession", targets: ["AgentSession"]),
@@ -13,6 +14,7 @@ let package = Package(
     ],
     targets: [
         .target(name: "AgentSession", dependencies: [.product(name: "ProcessRunner", package: "swift-process-runner"), .product(name: "FoundationExtensions", package: "swift-foundation-extensions")], path: "Sources",
+                resources: [.process("AgentSession/Localizable.xcstrings")],
                 swiftSettings: [.swiftLanguageMode(.v6)]),
         .testTarget(name: "AgentSessionTests", dependencies: ["AgentSession"], path: "Tests"),
     ]

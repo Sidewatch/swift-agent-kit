@@ -192,18 +192,19 @@ final class TranscriptCacheTests: XCTestCase {
         assertMatchesFullReparse(a)
     }
 
-    // The 300-event cap applied across several incremental polls must land on
-    // exactly the same window as a full parse's suffix(300).
+    // The event cap applied across several incremental polls must land on exactly the same
+    // window as a full parse's suffix.
     func testEventCapMatchesFullReparseAcrossPolls() throws {
-        try write((0..<250).map { userLine("prompt \($0)") + "\n" }.joined())
+        let cap = TranscriptState.eventCap
+        try write((0..<(cap - 50)).map { userLine("prompt \($0)") + "\n" }.joined())
         let a = freshAdapter()
-        XCTAssertEqual(a.events(for: root).count, 250)
+        XCTAssertEqual(a.events(for: root).count, cap - 50)
 
-        try append((250..<400).map { userLine("prompt \($0)") + "\n" }.joined())
+        try append(((cap - 50)..<(cap + 100)).map { userLine("prompt \($0)") + "\n" }.joined())
         let events = a.events(for: root)
-        XCTAssertEqual(events.count, 300)
+        XCTAssertEqual(events.count, cap)
         XCTAssertEqual(events.first?.detail, "prompt 100")
-        XCTAssertEqual(events.last?.detail, "prompt 399")
+        XCTAssertEqual(events.last?.detail, "prompt \(cap + 99)")
         assertMatchesFullReparse(a)
     }
 
