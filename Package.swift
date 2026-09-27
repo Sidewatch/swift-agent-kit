@@ -8,8 +8,11 @@ let package = Package(
     products: [
         .library(name: "AgentStatus", targets: ["AgentStatus"]),
     ],
+    dependencies: [
+        .package(path: "../swift-foundation-extensions"),
+    ],
     targets: [
-        .target(name: "AgentStatus", resources: [.process("Localizable.xcstrings")], swiftSettings: [.swiftLanguageMode(.v6)]),
+        .target(name: "AgentStatus", dependencies: [.product(name: "FoundationExtensions", package: "swift-foundation-extensions")], resources: [.process("Localizable.xcstrings")], swiftSettings: [.swiftLanguageMode(.v6)]),
         .testTarget(name: "AgentStatusTests", dependencies: ["AgentStatus"]),
     ]
 )

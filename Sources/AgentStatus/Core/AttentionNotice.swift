@@ -9,6 +9,7 @@
 //
 
 import Foundation
+import FoundationExtensions
 
 /// The rule behind an "agent needs you" / "agent finished" notification. A notification is for
 /// a state the person cannot see: the app is in the background, or the pane is not on screen.
@@ -36,8 +37,4 @@ public enum AttentionNotice: Equatable, Sendable {
                     String(localized: "Back at the prompt.", bundle: .module, comment: "Notification body: the agent has finished and is back at its input prompt"))
         }
     }
-}
-
-private extension String {
-    var nonEmpty: String? { isEmpty ? nil : self }
 }
