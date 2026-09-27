@@ -5,6 +5,7 @@
 //  One compiler or linter diagnostic, parsed from a line of terminal output.
 //
 //  Created by David Sherlock on 9/11/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

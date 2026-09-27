@@ -5,6 +5,7 @@
 //  Whether a change in an agent's state deserves a notification, and what it should say.
 //
 //  Created by David Sherlock on 9/24/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import Foundation

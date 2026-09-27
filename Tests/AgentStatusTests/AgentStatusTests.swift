@@ -5,6 +5,7 @@
 //  Ported from Sidewatch's --dump-terminal-status: the rules, calling the REAL derivation.
 //
 //  Created by David Sherlock on 9/5/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import XCTest

@@ -6,6 +6,7 @@
 //  looks like it must not, colour is stripped, and the latest diagnostic per location wins.
 //
 //  Created by David Sherlock on 9/22/26.
+//  Copyright © 2026 ArrayPress Limited. MIT licence.
 //
 
 import XCTest
