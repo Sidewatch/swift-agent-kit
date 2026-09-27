@@ -156,11 +156,11 @@ public enum TerminalStatus: Equatable, Sendable {
     /// Short label shown beside the terminal's name.
     public var label: String {
         switch self {
-        case .idle:     return "Idle"
-        case .agent:    return "Working"
-        case .running:  return "Running"
-        case .finished: return "Done"
-        case .waiting:  return "Needs you"
+        case .idle:     return String(localized: "Idle", bundle: .module, comment: "Terminal status label: nothing is running")
+        case .agent:    return String(localized: "Working", bundle: .module, comment: "Terminal status label: an agent is working")
+        case .running:  return String(localized: "Running", bundle: .module, comment: "Terminal status label: a command is running")
+        case .finished: return String(localized: "Done", bundle: .module, comment: "Terminal status label: the agent has finished")
+        case .waiting:  return String(localized: "Needs you", bundle: .module, comment: "Terminal status label: the agent is waiting for the person's answer")
         }
     }
 

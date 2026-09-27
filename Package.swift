@@ -3,12 +3,13 @@ import PackageDescription
 
 let package = Package(
     name: "AgentStatus",
+    defaultLocalization: "en",
     platforms: [.macOS(.v14)],
     products: [
         .library(name: "AgentStatus", targets: ["AgentStatus"]),
     ],
     targets: [
-        .target(name: "AgentStatus", swiftSettings: [.swiftLanguageMode(.v6)]),
+        .target(name: "AgentStatus", resources: [.process("Localizable.xcstrings")], swiftSettings: [.swiftLanguageMode(.v6)]),
         .testTarget(name: "AgentStatusTests", dependencies: ["AgentStatus"]),
     ]
 )

@@ -26,12 +26,14 @@ public enum AttentionNotice: Equatable, Sendable {
 
     /// The notification's title and body for an agent named `agent` ("Claude", "Codex"…).
     public func text(agent: String) -> (title: String, body: String) {
-        let name = agent.isEmpty ? "Agent" : agent
+        let name = agent.isEmpty ? String(localized: "Agent", bundle: .module, comment: "Stand-in agent name in a notification title when the agent's name is unknown") : agent
         switch self {
         case .needsYou(let prompt):
-            return ("\(name) needs you", prompt?.trimmingCharacters(in: .whitespaces).nonEmpty ?? "A prompt is waiting in the terminal.")
+            return (String(localized: "\(name) needs you", bundle: .module, comment: "Notification title; the argument is the agent's name, such as Claude"),
+                    prompt?.trimmingCharacters(in: .whitespaces).nonEmpty ?? String(localized: "A prompt is waiting in the terminal.", bundle: .module))
         case .finished:
-            return ("\(name) finished", "Back at the prompt.")
+            return (String(localized: "\(name) finished", bundle: .module, comment: "Notification title; the argument is the agent's name, such as Claude"),
+                    String(localized: "Back at the prompt.", bundle: .module, comment: "Notification body: the agent has finished and is back at its input prompt"))
         }
     }
 }
