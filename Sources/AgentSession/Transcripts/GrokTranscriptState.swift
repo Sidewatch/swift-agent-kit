@@ -36,13 +36,13 @@ struct GrokTranscriptState: TranscriptParsing {
         case "user":
             guard let text = Self.typedText(item) else { return }
             buffer.append(TimelineEvent(kind: .userPrompt, title: TranscriptText.promptTitle, detail: TranscriptText.firstLine(text),
-                                        filePath: nil, timestamp: ""))
+                                        filePath: nil, timestamp: "", fullText: text))
         case "assistant":
             let model = item["model_id"] as? String
             let text = (item["content"] as? String ?? "").trimmed
             if !text.isEmpty {
                 buffer.append(TimelineEvent(kind: .assistantText, title: "Grok", detail: TranscriptText.firstLine(text),
-                                            filePath: nil, timestamp: "", model: model))
+                                            filePath: nil, timestamp: "", model: model, fullText: text))
             }
             for call in item["tool_calls"] as? [[String: Any]] ?? [] { ingestToolCall(call, model: model) }
         case "tool_result":

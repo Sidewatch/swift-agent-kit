@@ -139,14 +139,14 @@ extension GeminiTranscriptState {
             let text = partsText(message["displayContent"] ?? message["content"]).trimmed
             guard isTypedByPerson(text) else { return entry }
             entry.events = [TimelineEvent(kind: .userPrompt, title: TranscriptText.promptTitle, detail: TranscriptText.firstLine(text),
-                                          filePath: nil, timestamp: ts)]
+                                          filePath: nil, timestamp: ts, fullText: text)]
         case "gemini":
             let model = message["model"] as? String
             entry.model = model
             let text = partsText(message["content"]).trimmed
             if !text.isEmpty {
                 entry.events.append(TimelineEvent(kind: .assistantText, title: "Gemini", detail: TranscriptText.firstLine(text),
-                                                  filePath: nil, timestamp: ts, model: model))
+                                                  filePath: nil, timestamp: ts, model: model, fullText: text))
             }
             for call in message["toolCalls"] as? [[String: Any]] ?? [] {
                 let (event, edited) = toolEvent(call, model: model, fallbackTime: ts)

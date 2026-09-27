@@ -134,9 +134,9 @@ final class TranscriptFixtureTests: XCTestCase {
                        ["Add a retry", "Cap it at 30s"])
     }
 
-    /// Only what the person typed opens a turn. A sub-agent's report, a background task's
-    /// notice, a command's output and the summary a compaction leaves all arrive as user-role
-    /// lines; a paste arrives wrapped in a tag and is still a prompt. Shapes from a real session.
+    /// Only what the person typed is theirs. A sub-agent's report, a background task's notice, a
+    /// command's output and the summary a compaction leaves all arrive as user-role lines; a paste
+    /// arrives wrapped in a tag and is still a prompt. Shapes from a real session.
     func testOnlyTypedMessagesArePrompts() throws {
         let events = ClaudeCodeAdapter().events(fromSession: try fixture([
             #"{"type":"user","origin":{"kind":"human"},"timestamp":"2026-09-27T10:00:00.000Z","message":{"content":"Tidy the models"}}"#,
@@ -145,7 +145,11 @@ final class TranscriptFixtureTests: XCTestCase {
             #"{"type":"user","isCompactSummary":true,"isVisibleInTranscriptOnly":true,"timestamp":"2026-09-27T10:03:00.000Z","message":{"content":"This session is being continued from a previous conversation."}}"#,
             #"{"type":"user","origin":{"kind":"human"},"timestamp":"2026-09-27T10:04:00.000Z","message":{"content":"<pasted_content id=\"x1\">Keep models lean</pasted_content> as above"}}"#,
         ]))
-        XCTAssertEqual(events.filter { $0.kind == .userPrompt }.map(\.detail), ["Tidy the models", "Keep models lean as above"])
+        let prompts = events.filter { $0.kind == .userPrompt }
+        XCTAssertEqual(prompts.filter { $0.source == .person }.map(\.detail), ["Tidy the models", "Keep models lean as above"])
+        // The background task's notice opens a turn of its own (the agent answers it), marked as
+        // Claude Code's rather than the person's; the peer message and the summary open none.
+        XCTAssertEqual(prompts.map(\.source), [.person, .agent, .person])
     }
 
     /// A message typed while the agent works is queued and then absorbed into the running turn;

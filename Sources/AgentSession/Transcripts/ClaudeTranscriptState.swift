@@ -106,14 +106,27 @@ struct ClaudeTranscriptState: TranscriptParsing {
         text.replacingOccurrences(of: #"</?pasted_content[^>]*>|\[Image #\d+\]\s*"#, with: "", options: .regularExpression)
     }
 
+    /// A user line as a prompt: the person's when `typed`; otherwise one Claude Code wrote
+    /// itself (a finished task, a sub-agent's report) when it is recognisably that, as a turn of
+    /// its own marked `.agent`; anything else (commands' output, meta lines) is not a turn.
+    private mutating func appendPrompt(_ raw: String, typed: Bool, ts: String) {
+        if typed {
+            let text = Self.unwrapped(raw)
+            buffer.append(TimelineEvent(kind: .userPrompt, title: TranscriptText.promptTitle, detail: TranscriptText.firstLine(text),
+                                        filePath: nil, timestamp: ts, fullText: text.trimmed))
+        } else if let title = ClaudeInjectedMessage.title(raw) {
+            buffer.append(TimelineEvent(kind: .userPrompt, title: "Claude Code", detail: TranscriptText.firstLine(title),
+                                        filePath: nil, timestamp: ts, fullText: raw.trimmed, source: .agent))
+        }
+    }
+
     /// Appends this line's timeline events (if any), keeping the buffer capped.
     private mutating func ingestEvent(_ obj: [String: Any]) {
         // A message typed while the agent works is queued, then absorbed into the running turn:
         // it has no user line of its own, and from that moment the agent works on it.
         if obj["type"] as? String == "queue-operation", obj["operation"] as? String == "remove",
            obj["reason"] as? String == "absorbed_mid_turn", let text = obj["content"] as? String {
-            buffer.append(TimelineEvent(kind: .userPrompt, title: TranscriptText.promptTitle,
-                                 detail: TranscriptText.firstLine(Self.unwrapped(text)), filePath: nil, timestamp: TranscriptText.shortTime(obj["timestamp"] as? String)))
+            appendPrompt(text, typed: ClaudeInjectedMessage.title(text) == nil, ts: TranscriptText.shortTime(obj["timestamp"] as? String))
             return
         }
         guard let msg = obj["message"] as? [String: Any] else { return }
@@ -123,9 +136,7 @@ struct ClaudeTranscriptState: TranscriptParsing {
         if type == "user" {
             let typed = Self.isTypedByPerson(obj)
             if let s = msg["content"] as? String {
-                if typed ?? !s.hasPrefix("<") {
-                    buffer.append(TimelineEvent(kind: .userPrompt, title: TranscriptText.promptTitle, detail: TranscriptText.firstLine(Self.unwrapped(s)), filePath: nil, timestamp: ts))
-                }
+                appendPrompt(s, typed: typed ?? !s.hasPrefix("<"), ts: ts)
             } else if let arr = msg["content"] as? [[String: Any]] {
                 // Tool results ride back on a user message: attach each to its call by id.
                 for block in arr where (block["type"] as? String) == "tool_result" {
@@ -137,9 +148,7 @@ struct ClaudeTranscriptState: TranscriptParsing {
                     buffer.attachResult(toolUseID: id, text: text, isError: (block["is_error"] as? Bool) ?? false)
                 }
                 let texts = arr.filter { ($0["type"] as? String) == "text" }.compactMap { $0["text"] as? String }
-                if !texts.isEmpty, typed ?? true {
-                    buffer.append(TimelineEvent(kind: .userPrompt, title: TranscriptText.promptTitle, detail: TranscriptText.firstLine(Self.unwrapped(texts.joined(separator: " "))), filePath: nil, timestamp: ts))
-                }
+                if !texts.isEmpty { appendPrompt(texts.joined(separator: " "), typed: typed ?? true, ts: ts) }
             }
         } else if type == "assistant", let arr = msg["content"] as? [[String: Any]] {
             // The message's bill rides on its FIRST event only — one model call, one charge —
@@ -160,7 +169,7 @@ struct ClaudeTranscriptState: TranscriptParsing {
                 case "text":
                     if let t = (block["text"] as? String)?.trimmed, !t.isEmpty {
                         buffer.append(TimelineEvent(kind: .assistantText, title: "Claude", detail: TranscriptText.firstLine(t), filePath: nil, timestamp: ts,
-                                             usage: bill(), model: messageModel))
+                                             usage: bill(), model: messageModel, fullText: t))
                     }
                 case "tool_use":
                     let name = block["name"] as? String ?? "tool"

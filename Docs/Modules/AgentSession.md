@@ -40,7 +40,8 @@ let root = URL(fileURLWithPath: "/path/to/project")
 // Which agent has a session here? The most recently active one; name an agent to prefer it
 // (the one running in the terminal the person is using — "codex" from a process name).
 let preferred = Agents.adapter(forProcess: "codex")?.name
-if let (agent, root) = Agents.resolve(candidates: [root], preferring: preferred) {
+if let hit = Agents.resolve(candidates: [root], preferring: preferred) {
+    let agent = hit.adapter, root = hit.root
     print(agent.name)   // e.g. Claude Code
 
     // The activity timeline, oldest first (the most recent 2,000 events).

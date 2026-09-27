@@ -35,6 +35,14 @@ public struct TimelineEvent: Equatable, Sendable {
         case fileEdit
     }
 
+    /// Who wrote a prompt.
+    public enum Source: Sendable {
+        /// The person at the keyboard.
+        case person
+        /// The agent tool itself: a background task finishing, a sub-agent reporting back.
+        case agent
+    }
+
     /// The category of this entry.
     public let kind: Kind
 
@@ -89,9 +97,17 @@ public struct TimelineEvent: Equatable, Sendable {
     /// How many trailing characters of a tool result are kept.
     public static let resultCap = 6_000
 
+    /// For a prompt or a reply, its whole text (`detail` is only the first line), kept to its
+    /// first ``fullTextCap`` characters so a pasted log cannot hold the timeline's memory.
+    public let fullText: String?
+    /// How many leading characters of a prompt's or reply's text are kept.
+    public static let fullTextCap = 20_000
+    /// Who wrote a prompt; `.person` for every other entry.
+    public let source: Source
+
     /// Creates a timeline entry.
     public init(kind: Kind, title: String, detail: String, filePath: String?, timestamp: String, anchor: String? = nil, command: String? = nil,
-                usage: Usage? = nil, model: String? = nil, toolUseID: String? = nil) {
+                usage: Usage? = nil, model: String? = nil, toolUseID: String? = nil, fullText: String? = nil, source: Source = .person) {
         self.kind = kind
         self.title = title
         self.detail = detail
@@ -102,5 +118,7 @@ public struct TimelineEvent: Equatable, Sendable {
         self.usage = usage
         self.model = model
         self.toolUseID = toolUseID
+        self.fullText = fullText.map { $0.count > Self.fullTextCap ? String($0.prefix(Self.fullTextCap)) + "…" : $0 }
+        self.source = source
     }
 }

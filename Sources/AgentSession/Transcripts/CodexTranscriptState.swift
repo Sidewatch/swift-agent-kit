@@ -95,12 +95,12 @@ struct CodexTranscriptState: TranscriptParsing {
         case "user":
             guard Self.isTypedByPerson(item, content: content), let text = texts.first(where: { !$0.trimmed.isEmpty }) else { return }
             let detail = TranscriptText.firstLine(text)
-            buffer.append(TimelineEvent(kind: .userPrompt, title: TranscriptText.promptTitle, detail: detail, filePath: nil, timestamp: ts))
+            buffer.append(TimelineEvent(kind: .userPrompt, title: TranscriptText.promptTitle, detail: detail, filePath: nil, timestamp: ts, fullText: text.trimmed))
         case "assistant":
             let text = texts.joined(separator: "\n").trimmed
             guard !text.isEmpty else { return }
             buffer.append(TimelineEvent(kind: .assistantText, title: "Codex", detail: TranscriptText.firstLine(text),
-                                        filePath: nil, timestamp: ts, model: model))
+                                        filePath: nil, timestamp: ts, model: model, fullText: text))
         default:
             break   // developer / system instructions are not part of the conversation
         }
