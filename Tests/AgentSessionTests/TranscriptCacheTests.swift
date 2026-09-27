@@ -92,8 +92,10 @@ final class TranscriptCacheTests: XCTestCase {
     /// cold adapter's full re-parse of the file's current contents produces,
     /// across all three readers. This is the core semantic guarantee: the cache
     /// changes cost, never results.
-    private func assertMatchesFullReparse(_ cached: ClaudeCodeAdapter,
-                                          file: StaticString = #filePath, line: UInt = #line) {
+    private func assertMatchesFullReparse(
+        _ cached: ClaudeCodeAdapter,
+        file: StaticString = #filePath, line: UInt = #line
+    ) {
         let oracle = freshAdapter()
 
         let cu = cached.usage(for: root), ou = oracle.usage(for: root)
@@ -128,14 +130,14 @@ final class TranscriptCacheTests: XCTestCase {
         try write(first)
         let a = freshAdapter()
         assertMatchesFullReparse(a)
-        XCTAssertEqual(a.transcriptReadCount, 1)           // one cold read serves all three readers
+        XCTAssertEqual(a.transcriptReadCount, 1)  // one cold read serves all three readers
         XCTAssertEqual(a.transcriptBytesRead, first.utf8.count)
 
         let second = usageLine(id: "m2", input: 2000, output: 50) + "\n" + editLine("/proj/A.swift") + "\n"
         try append(second)
         assertMatchesFullReparse(a)
-        XCTAssertEqual(a.transcriptReadCount, 2)           // one incremental read for the batch
-        XCTAssertEqual(a.transcriptBytesRead, first.utf8.count + second.utf8.count) // appended bytes only
+        XCTAssertEqual(a.transcriptReadCount, 2)  // one incremental read for the batch
+        XCTAssertEqual(a.transcriptBytesRead, first.utf8.count + second.utf8.count)  // appended bytes only
 
         let third = userLine("second") + "\n"
         try append(third)
@@ -150,16 +152,16 @@ final class TranscriptCacheTests: XCTestCase {
     func testPartialTrailingLineCompletedAcrossTwoPolls() throws {
         let full = usageLine(id: "m1", input: 1000, output: 100)
         let cut = full.index(full.startIndex, offsetBy: full.count / 2)
-        try write(userLine("hello") + "\n" + String(full[..<cut]))   // ends mid-line, no newline
+        try write(userLine("hello") + "\n" + String(full[..<cut]))  // ends mid-line, no newline
 
         let a = freshAdapter()
-        XCTAssertNil(a.usage(for: root))                    // half a JSON line is no usage
-        XCTAssertEqual(a.events(for: root).count, 1)        // only the complete user line
+        XCTAssertNil(a.usage(for: root))  // half a JSON line is no usage
+        XCTAssertEqual(a.events(for: root).count, 1)  // only the complete user line
         assertMatchesFullReparse(a)
 
-        try append(String(full[cut...]) + "\n")             // the rest of the line arrives
+        try append(String(full[cut...]) + "\n")  // the rest of the line arrives
         let u = try XCTUnwrap(a.usage(for: root))
-        XCTAssertEqual(u.outputTokens, 100)                 // now parsed, exactly once
+        XCTAssertEqual(u.outputTokens, 100)  // now parsed, exactly once
         XCTAssertEqual(a.events(for: root).count, 2)
         assertMatchesFullReparse(a)
     }
@@ -169,13 +171,13 @@ final class TranscriptCacheTests: XCTestCase {
     // cache must serve it too — tentatively, without folding it into durable
     // state, so it is not double-counted when the newline (and more) arrives.
     func testUnterminatedCompleteLineIsServedOnceNotTwice() throws {
-        try write(usageLine(id: "m1", input: 1000, output: 100))     // no trailing "\n"
+        try write(usageLine(id: "m1", input: 1000, output: 100))  // no trailing "\n"
         let a = freshAdapter()
-        XCTAssertEqual(a.usage(for: root)?.outputTokens, 100)        // served now, like a full parse
+        XCTAssertEqual(a.usage(for: root)?.outputTokens, 100)  // served now, like a full parse
         assertMatchesFullReparse(a)
 
         try append("\n" + usageLine(id: "m2", input: 500, output: 25) + "\n")
-        XCTAssertEqual(a.usage(for: root)?.outputTokens, 125)        // m1 folded once, not twice
+        XCTAssertEqual(a.usage(for: root)?.outputTokens, 125)  // m1 folded once, not twice
         assertMatchesFullReparse(a)
     }
 
@@ -187,8 +189,8 @@ final class TranscriptCacheTests: XCTestCase {
         let a = freshAdapter()
         XCTAssertEqual(a.usage(for: root)?.outputTokens, 100)
 
-        try append(usageLine(id: "m1", input: 1000, output: 100) + "\n")   // duplicate, next poll
-        XCTAssertEqual(a.usage(for: root)?.outputTokens, 100)              // still counted once
+        try append(usageLine(id: "m1", input: 1000, output: 100) + "\n")  // duplicate, next poll
+        XCTAssertEqual(a.usage(for: root)?.outputTokens, 100)  // still counted once
         assertMatchesFullReparse(a)
     }
 
@@ -237,15 +239,15 @@ final class TranscriptCacheTests: XCTestCase {
         let keep = userLine("keep") + "\n"
         try write(keep + usageLine(id: "m1", input: 1000, output: 100) + "\n" + editLine("/proj/A.swift") + "\n")
         let a = freshAdapter()
-        XCTAssertEqual(a.events(for: root).count, 3)        // user + assistant text + edit
+        XCTAssertEqual(a.events(for: root).count, 3)  // user + assistant text + edit
 
         try truncate(to: UInt64(keep.utf8.count))
-        XCTAssertEqual(a.events(for: root).count, 1)        // re-parsed from scratch
+        XCTAssertEqual(a.events(for: root).count, 1)  // re-parsed from scratch
         XCTAssertNil(a.usage(for: root))
         XCTAssertEqual(a.summary(for: root)?.editedFiles, [])
         assertMatchesFullReparse(a)
 
-        try append(editLine("/proj/B.swift") + "\n")        // appends after the shrink still work
+        try append(editLine("/proj/B.swift") + "\n")  // appends after the shrink still work
         XCTAssertEqual(a.summary(for: root)?.editedFiles, ["/proj/B.swift"])
         assertMatchesFullReparse(a)
     }
@@ -260,8 +262,9 @@ final class TranscriptCacheTests: XCTestCase {
         let newFile = projectDir.appendingPathComponent("rotated.jsonl")
         try (userLine("new") + "\n").write(to: newFile, atomically: false, encoding: .utf8)
         // Force a strictly newer mtime so latestSessionFile picks it deterministically.
-        try FileManager.default.setAttributes([.modificationDate: Date().addingTimeInterval(60)],
-                                              ofItemAtPath: newFile.path)
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date().addingTimeInterval(60)],
+            ofItemAtPath: newFile.path)
 
         let events = a.events(for: root)
         XCTAssertEqual(events.count, 1)
@@ -280,16 +283,16 @@ final class TranscriptCacheTests: XCTestCase {
         _ = a.events(for: root)
         XCTAssertEqual(a.transcriptReadCount, 1)
 
-        let copy = a                                        // value copy, same cache reference
+        let copy = a  // value copy, same cache reference
         _ = copy.usage(for: root)
         _ = copy.summary(for: root)
-        XCTAssertEqual(copy.transcriptReadCount, 1)         // served from the shared cache
+        XCTAssertEqual(copy.transcriptReadCount, 1)  // served from the shared cache
         XCTAssertEqual(a.transcriptReadCount, 1)
 
-        let other = freshAdapter()                          // independent instance, cold cache
+        let other = freshAdapter()  // independent instance, cold cache
         _ = other.events(for: root)
-        XCTAssertEqual(other.transcriptReadCount, 1)        // its own full parse…
-        XCTAssertEqual(a.transcriptReadCount, 1)            // …never touching a's cache
+        XCTAssertEqual(other.transcriptReadCount, 1)  // its own full parse…
+        XCTAssertEqual(a.transcriptReadCount, 1)  // …never touching a's cache
     }
 
     // MARK: - Thread safety
@@ -301,12 +304,12 @@ final class TranscriptCacheTests: XCTestCase {
         let a = freshAdapter()
         DispatchQueue.concurrentPerform(iterations: 64) { i in
             switch i % 3 {
-            case 0:  _ = a.usage(for: root)
-            case 1:  _ = a.events(for: root)
+            case 0: _ = a.usage(for: root)
+            case 1: _ = a.events(for: root)
             default: _ = a.summary(for: root)
             }
         }
-        XCTAssertEqual(a.transcriptReadCount, 1)            // the parse happened exactly once
+        XCTAssertEqual(a.transcriptReadCount, 1)  // the parse happened exactly once
         assertMatchesFullReparse(a)
     }
 }

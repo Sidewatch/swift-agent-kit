@@ -48,12 +48,14 @@ final class GrokAdapterTests: XCTestCase {
     // Expectations below were read from the fixture by hand, not produced by the parser.
 
     func testARealSessionGivesThePromptsTheCallsTheirOutputAndTheReply() throws {
-        let url = try XCTUnwrap(Bundle.module.url(forResource: "chat_history", withExtension: "jsonl", subdirectory: "Fixtures/Grok/session"))
+        let url = try XCTUnwrap(
+            Bundle.module.url(forResource: "chat_history", withExtension: "jsonl", subdirectory: "Fixtures/Grok/session"))
         let e = GrokAdapter(sessionsRoot: root).events(fromSession: url)
         XCTAssertEqual(e.map(\.kind), [.userPrompt, .assistantText, .toolUse, .toolUse, .toolUse, .userPrompt])
-        XCTAssertEqual(e.filter { $0.kind == .userPrompt }.map(\.detail),
-                       ["Read hello.py and summarize what it prints without editing files.", "Here is a screenshot for reference."],
-                       "the injected <user_info> context is not a prompt; an image part adds no text")
+        XCTAssertEqual(
+            e.filter { $0.kind == .userPrompt }.map(\.detail),
+            ["Read hello.py and summarize what it prints without editing files.", "Here is a screenshot for reference."],
+            "the injected <user_info> context is not a prompt; an image part adds no text")
         XCTAssertEqual(e[1].detail, "I'll read the file first.")
         XCTAssertEqual(e[2].title, "read_file")
         XCTAssertEqual(e[2].result, "print(\"hello from the grok fixture\")\n", "a tool_result attaches to its call")
@@ -73,37 +75,51 @@ final class GrokAdapterTests: XCTestCase {
             user("<user_query>\nFix the parser\n</user_query>", #","prompt_index":0"#),
             user("summary of earlier turns", #","synthetic_reason":"compaction_meta""#),
             user("Background task finished", #","synthetic_reason":"task_completed","prompt_index":1"#),
-            user("The user interrupted the previous turn:\n<user_query>\nStop, use tabs\n</user_query>\nIf the user is asking…", #","prompt_index":2"#),
-            user("The user sent a message while you were working:\n<user_query>\nalso the tests\n</user_query>", #","synthetic_reason":"interjection""#),
+            user(
+                "The user interrupted the previous turn:\n<user_query>\nStop, use tabs\n</user_query>\nIf the user is asking…",
+                #","prompt_index":2"#),
+            user(
+                "The user sent a message while you were working:\n<user_query>\nalso the tests\n</user_query>",
+                #","synthetic_reason":"interjection""#),
             user("typed in verbatim mode", #","prompt_index":3"#),
             user("x", #","synthetic_reason":"some_future_reason""#),
         ]
-        XCTAssertEqual(state(lines).eventsResult.map(\.detail), ["Fix the parser", "Stop, use tabs", "also the tests", "typed in verbatim mode"])
+        XCTAssertEqual(
+            state(lines).eventsResult.map(\.detail), ["Fix the parser", "Stop, use tabs", "also the tests", "typed in verbatim mode"])
     }
 
     /// Edits across the toolsets (`xai-grok-agent/src/config.rs`); a relative path is the
     /// session cwd's, which is the project the session was found under.
     func testEditsAcrossToolsetsResolveUnderTheProject() throws {
         func call(_ id: String, _ name: String, _ args: String) -> String {
-            #"{"id":"ID","name":"NAME","arguments":ARGS}"#.replacingOccurrences(of: "ID", with: id).replacingOccurrences(of: "NAME", with: name)
-                .replacingOccurrences(of: "ARGS", with: String(data: try! JSONEncoder().encode(args), encoding: .utf8)!)
+            #"{"id":"ID","name":"NAME","arguments":ARGS}"#.replacingOccurrences(of: "ID", with: id).replacingOccurrences(
+                of: "NAME", with: name
+            )
+            .replacingOccurrences(of: "ARGS", with: String(data: try! JSONEncoder().encode(args), encoding: .utf8)!)
         }
-        let calls = [call("1", "search_replace", #"{"file_path":"src/a.rs","old_string":"x","new_string":"let answer = 42;"}"#),
-                     call("2", "write", #"{"file_path":"/abs/b.md","content":"hi"}"#),
-                     call("3", "apply_patch", #"{"patch":"*** Begin Patch\n*** Add File: c.txt\n+x\n*** End Patch"}"#),
-                     call("4", "run_terminal_command", #"{"command":"cargo test","description":"run tests"}"#),
-                     call("5", "hashline_edit", #"{"file_path":"d.rs","edits":[]}"#)]
+        let calls = [
+            call("1", "search_replace", #"{"file_path":"src/a.rs","old_string":"x","new_string":"let answer = 42;"}"#),
+            call("2", "write", #"{"file_path":"/abs/b.md","content":"hi"}"#),
+            call("3", "apply_patch", #"{"patch":"*** Begin Patch\n*** Add File: c.txt\n+x\n*** End Patch"}"#),
+            call("4", "run_terminal_command", #"{"command":"cargo test","description":"run tests"}"#),
+            call("5", "hashline_edit", #"{"file_path":"d.rs","edits":[]}"#),
+        ]
         let project = "/work/app"
-        try session(project, "s1", lines: [#"{"type":"assistant","content":"","tool_calls":[\#(calls.joined(separator: ","))],"model_id":"grok-4.5"}"#,
-                                           #"{"type":"tool_result","tool_call_id":"4","content":"ok"}"#])
+        try session(
+            project, "s1",
+            lines: [
+                #"{"type":"assistant","content":"","tool_calls":[\#(calls.joined(separator: ","))],"model_id":"grok-4.5"}"#,
+                #"{"type":"tool_result","tool_call_id":"4","content":"ok"}"#,
+            ])
         let adapter = GrokAdapter(sessionsRoot: root)
         let e = adapter.events(for: URL(fileURLWithPath: project))
         XCTAssertEqual(e.compactMap(\.filePath), ["/work/app/src/a.rs", "/abs/b.md", "/work/app/c.txt", "/work/app/d.rs"])
         XCTAssertEqual(e.first?.anchor, "let answer = 42;")
         XCTAssertEqual(e.first { $0.command != nil }?.command, "cargo test")
         XCTAssertEqual(e.first { $0.command != nil }?.result, "ok")
-        XCTAssertEqual(adapter.summary(for: URL(fileURLWithPath: project))?.editedFiles,
-                       ["/work/app/src/a.rs", "/abs/b.md", "/work/app/c.txt", "/work/app/d.rs"])
+        XCTAssertEqual(
+            adapter.summary(for: URL(fileURLWithPath: project))?.editedFiles,
+            ["/work/app/src/a.rs", "/abs/b.md", "/work/app/c.txt", "/work/app/d.rs"])
     }
 
     /// `paths.rs`: the cwd is `urlencoding::encode`d — only `A–Z a–z 0–9 - _ . ~` survive.
@@ -122,8 +138,9 @@ final class GrokAdapterTests: XCTestCase {
         try session(project, "child", lines: [user("e")], kind: "subagent", age: 1)
         try session(project, "fork", lines: [user("f")], kind: "subagent_fork", age: 2)
         let index = GrokSessionIndex(sessionsRoot: root)
-        XCTAssertEqual(index.latestSession(for: URL(fileURLWithPath: project))?.deletingLastPathComponent().lastPathComponent,
-                       newest.deletingLastPathComponent().lastPathComponent)
+        XCTAssertEqual(
+            index.latestSession(for: URL(fileURLWithPath: project))?.deletingLastPathComponent().lastPathComponent,
+            newest.deletingLastPathComponent().lastPathComponent)
         XCTAssertNil(index.latestSession(for: URL(fileURLWithPath: "/work/none")))
 
         let long = "/work/" + String(repeating: "deep/", count: 60) + "proj"

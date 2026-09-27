@@ -21,17 +21,22 @@ enum ClaudeInjectedMessage {
         let t = text.trimmed
         if t.hasPrefix("<task-notification>") {
             return element("summary", in: t)?.nonEmpty
-                ?? String(localized: "A background task finished", bundle: .module, comment: "Timeline: a turn Claude Code started itself when a background task ended")
+                ?? String(
+                    localized: "A background task finished", bundle: .module,
+                    comment: "Timeline: a turn Claude Code started itself when a background task ended")
         }
         if t.hasPrefix("<agent-message") {
-            return String(localized: "Report from a sub-agent", bundle: .module, comment: "Timeline: a turn Claude Code started itself with a sub-agent's report")
+            return String(
+                localized: "Report from a sub-agent", bundle: .module,
+                comment: "Timeline: a turn Claude Code started itself with a sub-agent's report")
         }
         return nil
     }
 
     /// The text of the first `<name>…</name>` element in `text`.
     private static func element(_ name: String, in text: String) -> String? {
-        guard let open = text.range(of: "<\(name)>"), let close = text.range(of: "</\(name)>", range: open.upperBound..<text.endIndex) else { return nil }
+        guard let open = text.range(of: "<\(name)>"), let close = text.range(of: "</\(name)>", range: open.upperBound..<text.endIndex)
+        else { return nil }
         return String(text[open.upperBound..<close.lowerBound]).trimmed
     }
 }

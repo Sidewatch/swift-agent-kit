@@ -140,8 +140,10 @@ public enum TerminalStatus: Equatable, Sendable {
     /// still busy in the process table); then busy outranks the completion flag, since a
     /// terminal that has started new work is working. No parameter has a default: omitting one
     /// would silently degrade the answer with nothing for the compiler to catch.
-    public static func derive(foreground fg: ForegroundInfo, unseenCompletion: Bool,
-                       attention: TerminalAttention?) -> TerminalStatus {
+    public static func derive(
+        foreground fg: ForegroundInfo, unseenCompletion: Bool,
+        attention: TerminalAttention?
+    ) -> TerminalStatus {
         if attention == .waiting { return .waiting }
         if fg.isBusy { return isAgentProcess(fg.process, path: fg.processPath, args: fg.processArgs) ? .agent : .running }
         return unseenCompletion ? .finished : .idle
@@ -159,22 +161,24 @@ public enum TerminalStatus: Equatable, Sendable {
     /// SF Symbol for the status dot.
     public var symbolName: String {
         switch self {
-        case .idle:     return "circle"
-        case .agent:    return "circle.fill"
-        case .running:  return "circle.dotted"
+        case .idle: return "circle"
+        case .agent: return "circle.fill"
+        case .running: return "circle.dotted"
         case .finished: return "checkmark.circle.fill"
-        case .waiting:  return "exclamationmark.circle.fill"
+        case .waiting: return "exclamationmark.circle.fill"
         }
     }
 
     /// Short label shown beside the terminal's name.
     public var label: String {
         switch self {
-        case .idle:     return String(localized: "Idle", bundle: .module, comment: "Terminal status label: nothing is running")
-        case .agent:    return String(localized: "Working", bundle: .module, comment: "Terminal status label: an agent is working")
-        case .running:  return String(localized: "Running", bundle: .module, comment: "Terminal status label: a command is running")
+        case .idle: return String(localized: "Idle", bundle: .module, comment: "Terminal status label: nothing is running")
+        case .agent: return String(localized: "Working", bundle: .module, comment: "Terminal status label: an agent is working")
+        case .running: return String(localized: "Running", bundle: .module, comment: "Terminal status label: a command is running")
         case .finished: return String(localized: "Done", bundle: .module, comment: "Terminal status label: the agent has finished")
-        case .waiting:  return String(localized: "Needs you", bundle: .module, comment: "Terminal status label: the agent is waiting for the person's answer")
+        case .waiting:
+            return String(
+                localized: "Needs you", bundle: .module, comment: "Terminal status label: the agent is waiting for the person's answer")
         }
     }
 
@@ -184,11 +188,11 @@ public enum TerminalStatus: Equatable, Sendable {
         switch self {
         // Waiting outranks finished: both want you, but a waiting agent is STALLED — nothing
         // moves until you answer — while a finished one has at least delivered its work.
-        case .waiting:  return 0
+        case .waiting: return 0
         case .finished: return 1
-        case .agent:    return 2
-        case .running:  return 3
-        case .idle:     return 4
+        case .agent: return 2
+        case .running: return 3
+        case .idle: return 4
         }
     }
 }

@@ -20,7 +20,8 @@ public enum ScreenStateClassifier {
     /// allow once"), Codex ("> 1. Yes").
     private static let numberedChoice = try! NSRegularExpression(pattern: #"^\s*[❯>●▸►]\s*\d+\.\s"#)
     /// A yes/no question in any of the usual spellings.
-    private static let yesNo = try! NSRegularExpression(pattern: #"(\(y/n\)|\[y/n\]|\[Y/n\]|\[y/N\]|\(yes/no\))"#, options: [.caseInsensitive])
+    private static let yesNo = try! NSRegularExpression(
+        pattern: #"(\(y/n\)|\[y/n\]|\[Y/n\]|\[y/N\]|\(yes/no\))"#, options: [.caseInsensitive])
     /// Plain-language permission prompts — only when phrased as a question.
     private static let asks: [String] = [
         "do you want to proceed", "do you want to make this edit", "do you want to allow",
@@ -58,7 +59,11 @@ public enum ScreenStateClassifier {
             let range = NSRange(line.startIndex..., in: line)
             if numberedChoice.firstMatch(in: line, range: range) != nil { return question(before: i, in: trimmed) ?? line }
             if yesNo.firstMatch(in: line, range: range) != nil { return line }
-            if asks.contains(where: { lower[i].contains($0) }), lower[i].contains("?") || lower[i].hasSuffix(":") || lower[i].contains("requests your input") { return line }
+            if asks.contains(where: { lower[i].contains($0) }),
+                lower[i].contains("?") || lower[i].hasSuffix(":") || lower[i].contains("requests your input")
+            {
+                return line
+            }
         }
         if let footer = lower.firstIndex(where: { $0.contains(dialogCancel) && dialogConfirms.contains(where: $0.contains) }) {
             return question(before: footer, in: trimmed) ?? trimmed[footer]

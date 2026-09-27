@@ -31,8 +31,10 @@ public struct UsageReport: Equatable, Sendable {
         /// Tokens written to the prompt cache.
         public let cacheCreateTokens: Int
         /// A subtotal with every figure explicit.
-        public init(key: String, costUSD: Double, inputTokens: Int, outputTokens: Int,
-                    cacheReadTokens: Int, cacheCreateTokens: Int) {
+        public init(
+            key: String, costUSD: Double, inputTokens: Int, outputTokens: Int,
+            cacheReadTokens: Int, cacheCreateTokens: Int
+        ) {
             self.key = key; self.costUSD = costUSD
             self.inputTokens = inputTokens; self.outputTokens = outputTokens
             self.cacheReadTokens = cacheReadTokens; self.cacheCreateTokens = cacheCreateTokens
@@ -84,12 +86,14 @@ public struct UsageReport: Equatable, Sendable {
     public var favoriteModel: String? { byModel.first?.key }
 
     /// A report with the core totals; the streak and session statistics default to empty.
-    public init(totalCostUSD: Double, inputTokens: Int, outputTokens: Int, cacheReadTokens: Int,
-                cacheCreateTokens: Int, messageCount: Int, byModel: [Bucket], byProject: [Bucket],
-                dailyCostUSD: [String: Double], windowDays: Int?,
-                dailyTokens: [String: Int] = [:], sessionCount: Int = 0, activeDays: Int = 0,
-                currentStreak: Int = 0, longestStreak: Int = 0, peakHour: Int? = nil,
-                longestSession: TimeInterval? = nil, mostActiveDay: String? = nil) {
+    public init(
+        totalCostUSD: Double, inputTokens: Int, outputTokens: Int, cacheReadTokens: Int,
+        cacheCreateTokens: Int, messageCount: Int, byModel: [Bucket], byProject: [Bucket],
+        dailyCostUSD: [String: Double], windowDays: Int?,
+        dailyTokens: [String: Int] = [:], sessionCount: Int = 0, activeDays: Int = 0,
+        currentStreak: Int = 0, longestStreak: Int = 0, peakHour: Int? = nil,
+        longestSession: TimeInterval? = nil, mostActiveDay: String? = nil
+    ) {
         self.totalCostUSD = totalCostUSD
         self.inputTokens = inputTokens; self.outputTokens = outputTokens
         self.cacheReadTokens = cacheReadTokens; self.cacheCreateTokens = cacheCreateTokens
@@ -105,7 +109,8 @@ public struct UsageReport: Equatable, Sendable {
     }
 
     /// No usage at all, for an all-time window.
-    public static let empty = UsageReport(totalCostUSD: 0, inputTokens: 0, outputTokens: 0,
+    public static let empty = UsageReport(
+        totalCostUSD: 0, inputTokens: 0, outputTokens: 0,
         cacheReadTokens: 0, cacheCreateTokens: 0, messageCount: 0, byModel: [], byProject: [],
         dailyCostUSD: [:], windowDays: nil)
 }

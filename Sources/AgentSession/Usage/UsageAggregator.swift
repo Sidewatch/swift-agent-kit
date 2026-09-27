@@ -32,7 +32,8 @@ public enum UsageAggregator {
         var totals = UsageTotals()
         for (project, file) in transcriptFiles(in: projectsRoot, modifiedOnOrAfter: cutoffDay) {
             guard let data = try? Data(contentsOf: file, options: .mappedIfSafe) else { continue }
-            for lineData in splitLines(data) where lineData.range(of: usageMarker) != nil {   // cheap gate: only usage-bearing lines are worth parsing
+            // cheap gate: only usage-bearing lines are worth parsing
+            for lineData in splitLines(data) where lineData.range(of: usageMarker) != nil {
                 guard let record = UsageRecord(line: lineData), record.tokens > 0 else { continue }
                 if let cutoffDay, !record.day.isEmpty, record.day < cutoffDay { continue }
                 totals.add(record, project: project, file: file)
@@ -98,10 +99,13 @@ public enum UsageAggregator {
     }
     /// The subtotals as report buckets, most expensive first.
     static func buckets(_ d: [String: Bucketing]) -> [UsageReport.Bucket] {
-        d.map { UsageReport.Bucket(key: $0.key, costUSD: $0.value.cost, inputTokens: $0.value.i,
-                                   outputTokens: $0.value.o, cacheReadTokens: $0.value.cr,
-                                   cacheCreateTokens: $0.value.cw) }
-         .sorted { $0.costUSD > $1.costUSD }
+        d.map {
+            UsageReport.Bucket(
+                key: $0.key, costUSD: $0.value.cost, inputTokens: $0.value.i,
+                outputTokens: $0.value.o, cacheReadTokens: $0.value.cr,
+                cacheCreateTokens: $0.value.cw)
+        }
+        .sorted { $0.costUSD > $1.costUSD }
     }
 
     // MARK: - Helpers
@@ -153,7 +157,7 @@ public enum UsageAggregator {
     /// A short model label ("claude-opus-4-…" → "Opus 4", else the family word).
     static func displayModel(_ model: String) -> String {
         let m = model.lowercased()
-        if m.contains("opus")  { return "Opus" }
+        if m.contains("opus") { return "Opus" }
         if m.contains("sonnet") { return "Sonnet" }
         if m.contains("haiku") { return "Haiku" }
         if m.contains("fable") { return "Fable" }

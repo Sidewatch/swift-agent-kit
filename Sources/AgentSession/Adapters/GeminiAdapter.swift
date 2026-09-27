@@ -30,8 +30,10 @@ public struct GeminiAdapter: AgentAdapter {
     public init() {
         let home = FileManager.default.homeDirectoryForCurrentUser
         let geminiHome = ProcessInfo.processInfo.environment["GEMINI_CLI_HOME"].map { URL(fileURLWithPath: $0, isDirectory: true) } ?? home
-        self.init(runtimeRoots: [geminiHome.appendingPathComponent(".gemini", isDirectory: true),
-                                 home.appendingPathComponent(".cache/.gemini", isDirectory: true)])
+        self.init(runtimeRoots: [
+            geminiHome.appendingPathComponent(".gemini", isDirectory: true),
+            home.appendingPathComponent(".cache/.gemini", isDirectory: true),
+        ])
     }
 
     /// Test seam: an adapter over any runtime folders.

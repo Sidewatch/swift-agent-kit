@@ -28,8 +28,9 @@ extension TurnBoundary {
             if e.kind == .toolUse || e.kind == .fileEdit { calls += 1 }
             if let m = e.model { model = m }
             if let u = e.usage {
-                cost += ModelPricing.cost(model: e.model ?? model ?? "claude", input: u.input, cacheWrite: u.cacheWrite,
-                                          cacheRead: u.cacheRead, output: u.output)
+                cost += ModelPricing.cost(
+                    model: e.model ?? model ?? "claude", input: u.input, cacheWrite: u.cacheWrite,
+                    cacheRead: u.cacheRead, output: u.output)
             }
         }
         return TurnEffort(toolCalls: calls, model: model, cost: cost)

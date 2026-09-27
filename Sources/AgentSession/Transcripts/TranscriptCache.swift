@@ -11,9 +11,9 @@
 
 import Foundation
 #if canImport(Darwin)
-import Darwin
+    import Darwin
 #elseif canImport(Glibc)
-import Glibc
+    import Glibc
 #endif
 
 /// The incremental transcript cache behind every adapter's readers: one entry per
@@ -23,7 +23,6 @@ import Glibc
 /// offset never passes it); anything else (rotation, new inode, shrink, same-size rewrite) →
 /// one full re-parse. Every access is under one `NSLock`; a bad line is skipped on its own.
 final class TranscriptCache<Parser: TranscriptParsing>: @unchecked Sendable {
-
 
     /// The results one poll serves — all three readers' values, materialized
     /// once per parse so usage/events/summary always come from the same bytes.
@@ -56,7 +55,6 @@ final class TranscriptCache<Parser: TranscriptParsing>: @unchecked Sendable {
         /// The memoized results (durable state + tentative trailing line).
         var snapshot: Snapshot
     }
-
 
     /// Guards all mutable state below. `NSLock` (non-reentrant) is sufficient:
     /// there is a single locked entry point and no nested locking.
@@ -98,9 +96,11 @@ final class TranscriptCache<Parser: TranscriptParsing>: @unchecked Sendable {
         // Fast path: nothing observable changed → the memoized snapshot, zero file reads.
         if let e = entries[key], e.isUnchanged(file.path, stat) { return e.snapshot }
 
-        var entry = entries[key].flatMap { $0.isPureAppend(file.path, stat) ? $0 : nil }
-            ?? Entry(filePath: file.path, inode: stat.inode, mtime: stat.mtime, size: 0, offset: 0,
-                     durable: Parser(), snapshot: .empty)
+        var entry =
+            entries[key].flatMap { $0.isPureAppend(file.path, stat) ? $0 : nil }
+            ?? Entry(
+                filePath: file.path, inode: stat.inode, mtime: stat.mtime, size: 0, offset: 0,
+                durable: Parser(), snapshot: .empty)
         // Read exactly [offset, size): the appended bytes plus the prefix of an unterminated line
         // carried over from the previous poll. Bytes appended after our stat wait for the next poll.
         guard let appended = readAppended(path: file.path, entry: entry, size: stat.size) else {
@@ -154,9 +154,9 @@ final class TranscriptCache<Parser: TranscriptParsing>: @unchecked Sendable {
             guard let base = buf.baseAddress else { return false }
             while filled < count {
                 let n = pread(fd, base + filled, count - filled, off_t(offset) + off_t(filled))
-                if n == 0 { break }                       // EOF: file shrank since stat
+                if n == 0 { break }  // EOF: file shrank since stat
                 if n < 0 {
-                    if errno == EINTR { continue }        // interrupted — retry
+                    if errno == EINTR { continue }  // interrupted — retry
                     return false
                 }
                 filled += n

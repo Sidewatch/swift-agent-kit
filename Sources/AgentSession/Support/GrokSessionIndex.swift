@@ -30,7 +30,8 @@ final class GrokSessionIndex: @unchecked Sendable {
     /// The newest top-level session's `chat_history.jsonl` for `root`, or nil.
     func latestSession(for root: URL) -> URL? {
         guard let bucket = bucket(for: root.standardizedFileURL.path),
-              let sessions = try? FileManager.default.contentsOfDirectory(at: bucket, includingPropertiesForKeys: nil) else { return nil }
+            let sessions = try? FileManager.default.contentsOfDirectory(at: bucket, includingPropertiesForKeys: nil)
+        else { return nil }
         var best: (url: URL, date: Date)?
         for session in sessions where !isSubagent(session) {
             let history = session.appendingPathComponent("chat_history.jsonl")
@@ -78,9 +79,10 @@ final class GrokSessionIndex: @unchecked Sendable {
         let signals = JSONFile.object(at: folder.appendingPathComponent("signals.json"))
         let session = JSONFile.object(at: folder.appendingPathComponent("usage.json"))?["session"] as? [String: Any]
         guard signals != nil || session != nil else { return nil }
-        return AgentUsage(contextTokens: signals?["contextTokensUsed"] as? Int ?? 0,
-                          contextLimit: signals?["contextWindowTokens"] as? Int ?? 0,
-                          outputTokens: session?["outputTokens"] as? Int ?? 0,
-                          costUSD: Double(session?["costUsdTicks"] as? Int ?? 0) / 1e10)
+        return AgentUsage(
+            contextTokens: signals?["contextTokensUsed"] as? Int ?? 0,
+            contextLimit: signals?["contextWindowTokens"] as? Int ?? 0,
+            outputTokens: session?["outputTokens"] as? Int ?? 0,
+            costUSD: Double(session?["costUsdTicks"] as? Int ?? 0) / 1e10)
     }
 }

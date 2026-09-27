@@ -59,22 +59,25 @@ public struct BuildDiagnostic: Equatable, Sendable {
     /// - Returns: The diagnostic, or `nil` when the line is ordinary output.
     public static func parse(_ text: String) -> BuildDiagnostic? {
         let ns = text as NSString
-        guard ns.length > 0, ns.length < 4_000,          // a pathological line is not a diagnostic
-              let m = pattern.firstMatch(in: text, range: NSRange(location: 0, length: ns.length)),
-              m.numberOfRanges == 6 else { return nil }
+        guard ns.length > 0, ns.length < 4_000,  // a pathological line is not a diagnostic
+            let m = pattern.firstMatch(in: text, range: NSRange(location: 0, length: ns.length)),
+            m.numberOfRanges == 6
+        else { return nil }
 
         let path = ns.substring(with: m.range(at: 1)).trimmingCharacters(in: .whitespaces)
         guard !path.isEmpty, let line = Int(ns.substring(with: m.range(at: 2))), line > 0,
-              // A bare word with no separator or extension is prose, not a path: "warning" in
-              // "note:12: warning: ..." style log lines would otherwise mark a phantom file.
-              path.contains("/") || path.contains(".") else { return nil }
+            // A bare word with no separator or extension is prose, not a path: "warning" in
+            // "note:12: warning: ..." style log lines would otherwise mark a phantom file.
+            path.contains("/") || path.contains(".")
+        else { return nil }
 
         let column = m.range(at: 3).location == NSNotFound ? nil : Int(ns.substring(with: m.range(at: 3)))
         guard let severity = Severity(rawValue: ns.substring(with: m.range(at: 4)).lowercased())
         else { return nil }
 
-        return BuildDiagnostic(path: path, line: line, column: column, severity: severity,
-                               message: ns.substring(with: m.range(at: 5)).trimmingCharacters(in: .whitespaces))
+        return BuildDiagnostic(
+            path: path, line: line, column: column, severity: severity,
+            message: ns.substring(with: m.range(at: 5)).trimmingCharacters(in: .whitespaces))
     }
 
     /// Parses many lines, keeping the LAST diagnostic per (file, line).
@@ -103,7 +106,7 @@ public struct BuildDiagnostic: Equatable, Sendable {
     /// - Returns: The row with every `ESC[…` sequence (to its final byte `@`–`~`) and every
     ///   `ESC]…` sequence (to BEL or the next ESC) removed; other text untouched.
     public static func stripANSI(_ text: String) -> String {
-        guard text.contains("\u{1B}") else { return text }      // the overwhelmingly common case
+        guard text.contains("\u{1B}") else { return text }  // the overwhelmingly common case
         var out = String.UnicodeScalarView()
         let scalars = Array(text.unicodeScalars)
         var i = 0
@@ -111,11 +114,11 @@ public struct BuildDiagnostic: Equatable, Sendable {
             guard scalars[i] == "\u{1B}" else { out.append(scalars[i]); i += 1; continue }
             i += 1
             guard i < scalars.count else { break }
-            if scalars[i] == "[" {                               // CSI: ends at a final byte @–~
+            if scalars[i] == "[" {  // CSI: ends at a final byte @–~
                 i += 1
                 while i < scalars.count, !(scalars[i].value >= 0x40 && scalars[i].value <= 0x7E) { i += 1 }
                 i += 1
-            } else if scalars[i] == "]" {                        // OSC: ends at BEL or ST
+            } else if scalars[i] == "]" {  // OSC: ends at BEL or ST
                 i += 1
                 while i < scalars.count, scalars[i] != "\u{07}", scalars[i] != "\u{1B}" { i += 1 }
                 i += 1

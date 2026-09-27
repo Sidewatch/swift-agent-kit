@@ -23,8 +23,10 @@ public final class ClaudeQuotaCache: @unchecked Sendable {
     private var inFlight = false
 
     /// `fetch` turns a session token into a quota (nil on failure); default is the live endpoint.
-    public init(minRefreshInterval: TimeInterval = 180,
-                fetch: @escaping @Sendable (String) -> ClaudeQuota? = { ClaudeUsageEndpoint.fetchQuota(sessionKey: $0) }) {
+    public init(
+        minRefreshInterval: TimeInterval = 180,
+        fetch: @escaping @Sendable (String) -> ClaudeQuota? = { ClaudeUsageEndpoint.fetchQuota(sessionKey: $0) }
+    ) {
         self.minRefreshInterval = minRefreshInterval
         self.fetch = fetch
     }
@@ -36,8 +38,10 @@ public final class ClaudeQuotaCache: @unchecked Sendable {
     /// fetch is in flight, otherwise fetches off-main first (resolving `token` there, since a
     /// Keychain read can prompt). Nil when `token` yields nothing. A failed refresh keeps the last
     /// good value. `force` ignores freshness (still gated by an in-flight fetch).
-    public func quota(force: Bool = false, token: @escaping @Sendable () -> String?,
-                      completion: @escaping @Sendable (ClaudeQuota?) -> Void) {
+    public func quota(
+        force: Bool = false, token: @escaping @Sendable () -> String?,
+        completion: @escaping @Sendable (ClaudeQuota?) -> Void
+    ) {
         lock.lock()
         let fresh = !force && (lastFetch.map { Date().timeIntervalSince($0) < minRefreshInterval } ?? false)
         if fresh || inFlight {

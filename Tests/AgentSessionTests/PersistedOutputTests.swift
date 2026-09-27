@@ -17,7 +17,9 @@ final class PersistedOutputTests: XCTestCase {
         dir = FileManager.default.temporaryDirectory.appendingPathComponent("persisted-\(UUID().uuidString)/session/tool-results")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
     }
-    override func tearDownWithError() throws { try? FileManager.default.removeItem(at: dir.deletingLastPathComponent().deletingLastPathComponent()) }
+    override func tearDownWithError() throws {
+        try? FileManager.default.removeItem(at: dir.deletingLastPathComponent().deletingLastPathComponent())
+    }
 
     func stub(_ path: String) -> String {
         "<persisted-output>\nOutput too large (37.3KB). Full output saved to: \(path)\n\nPreview (first 2KB):\n----\nTest Suite 'All tests' started\n"
@@ -47,17 +49,28 @@ final class PersistedOutputTests: XCTestCase {
     func testOnlyAToolResultsFileIsFollowed() {
         var asked: [String] = []
         let elsewhere = "<persisted-output>\nOutput too large (1KB). Full output saved to: /etc/passwd\n\nPreview (first 2KB):\n"
-        XCTAssertEqual(PersistedOutput.resolved(elsewhere, cap: 100, read: { asked.append($0); return "secret" }), elsewhere)
+        XCTAssertEqual(
+            PersistedOutput.resolved(
+                elsewhere, cap: 100,
+                read: {
+                    asked.append($0); return "secret"
+                }), elsewhere)
         XCTAssertTrue(asked.isEmpty, "a path outside a tool-results folder is never read")
         let inside = dir.appendingPathComponent("ok.txt").path
-        XCTAssertEqual(PersistedOutput.resolved(stub(inside), cap: 100, read: { asked.append($0); return "tail" }), "tail")
+        XCTAssertEqual(
+            PersistedOutput.resolved(
+                stub(inside), cap: 100,
+                read: {
+                    asked.append($0); return "tail"
+                }), "tail")
         XCTAssertEqual(asked, [inside])
     }
 
     /// Through the transcript parser: a tool call whose result was spilled carries the file's tail.
     func testTheParserFollowsASpilledResult() throws {
         let file = dir.appendingPathComponent("r1.txt")
-        try (String(repeating: "x\n", count: 4_000) + "Executed 12 tests, with 1 failure\n").write(to: file, atomically: true, encoding: .utf8)
+        try (String(repeating: "x\n", count: 4_000) + "Executed 12 tests, with 1 failure\n").write(
+            to: file, atomically: true, encoding: .utf8)
         let stubJSON = stub(file.path).replacingOccurrences(of: "\n", with: "\\n")
         let lines = [
             #"{"type":"assistant","timestamp":"2026-09-24T10:00:00.000Z","message":{"id":"m1","content":[{"type":"tool_use","id":"tu_1","name":"Bash","input":{"command":"swift test"}}]}}"#,

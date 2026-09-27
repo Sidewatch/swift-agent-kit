@@ -26,26 +26,31 @@ public enum ModelPricing {
     static func rates(for model: String) -> Rates {
         let m = model.lowercased()
         // `<synthetic>` is Claude Code's own placeholder id, so it is a Claude model too.
-        guard m.contains("claude") || m == "<synthetic>" || ["sonnet", "opus", "haiku", "fable", "mythos"].contains(where: m.contains) else {
+        guard m.contains("claude") || m == "<synthetic>" || ["sonnet", "opus", "haiku", "fable", "mythos"].contains(where: m.contains)
+        else {
             return Rates(input: 0, cacheWrite: 0, cacheRead: 0, output: 0)
         }
         let v = generation(of: m)
         if m.contains("fable") || m.contains("mythos") {
             // 5.1 reads its cache at 0.025× the input price ($0.25); 5.0 at the standard 0.1× ($1).
-            return atLeast(v, 5, 1) ? Rates(input: 10, cacheWrite: 12.5, cacheRead: 0.25, output: 50)
-                                    : Rates(input: 10, cacheWrite: 12.5, cacheRead: 1, output: 50)
+            return atLeast(v, 5, 1)
+                ? Rates(input: 10, cacheWrite: 12.5, cacheRead: 0.25, output: 50)
+                : Rates(input: 10, cacheWrite: 12.5, cacheRead: 1, output: 50)
         }
         if m.contains("opus") {
-            return atLeast(v, 4, 5) ? Rates(input: 5, cacheWrite: 6.25, cacheRead: 0.5, output: 25)
-                                    : Rates(input: 15, cacheWrite: 18.75, cacheRead: 1.5, output: 75)
+            return atLeast(v, 4, 5)
+                ? Rates(input: 5, cacheWrite: 6.25, cacheRead: 0.5, output: 25)
+                : Rates(input: 15, cacheWrite: 18.75, cacheRead: 1.5, output: 75)
         }
         if m.contains("haiku") {
-            return atLeast(v, 4, 5) ? Rates(input: 1, cacheWrite: 1.25, cacheRead: 0.1, output: 5)
-                                    : Rates(input: 0.8, cacheWrite: 1, cacheRead: 0.08, output: 4)
+            return atLeast(v, 4, 5)
+                ? Rates(input: 1, cacheWrite: 1.25, cacheRead: 0.1, output: 5)
+                : Rates(input: 0.8, cacheWrite: 1, cacheRead: 0.08, output: 4)
         }
         // Sonnet, and the default for a family this table does not know.
-        return atLeast(v, 5, 0) ? Rates(input: 2, cacheWrite: 2.5, cacheRead: 0.2, output: 10)
-                                : Rates(input: 3, cacheWrite: 3.75, cacheRead: 0.3, output: 15)
+        return atLeast(v, 5, 0)
+            ? Rates(input: 2, cacheWrite: 2.5, cacheRead: 0.2, output: 10)
+            : Rates(input: 3, cacheWrite: 3.75, cacheRead: 0.3, output: 15)
     }
 
     /// `(major, minor)` from the id's short numeric parts — `claude-opus-4-8` → 4.8,
@@ -66,8 +71,8 @@ public enum ModelPricing {
     public static func cost(model: String, input: Int, cacheWrite: Int, cacheRead: Int, output: Int) -> Double {
         let r = rates(for: model)
         return Double(input) / 1e6 * r.input
-             + Double(cacheWrite) / 1e6 * r.cacheWrite
-             + Double(cacheRead) / 1e6 * r.cacheRead
-             + Double(output) / 1e6 * r.output
+            + Double(cacheWrite) / 1e6 * r.cacheWrite
+            + Double(cacheRead) / 1e6 * r.cacheRead
+            + Double(output) / 1e6 * r.output
     }
 }

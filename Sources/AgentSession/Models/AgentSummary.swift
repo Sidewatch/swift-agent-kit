@@ -17,7 +17,6 @@ public struct AgentSummary: Sendable {
     /// Absolute paths of every file the agent wrote to this session.
     public let editedFiles: Set<String>
 
-
     /// Creates a session roll-up.
     public init(editedFiles: Set<String>) {
         self.editedFiles = editedFiles

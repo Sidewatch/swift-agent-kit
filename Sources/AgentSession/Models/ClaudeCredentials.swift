@@ -28,7 +28,8 @@ public enum ClaudeCredentials {
         if let obj = JSONFile.object(from: data) {
             // Nested (Claude Code's shape) …
             if let oauth = obj["claudeAiOauth"] as? [String: Any],
-               let token = oauth["accessToken"] as? String, !token.isEmpty {
+                let token = oauth["accessToken"] as? String, !token.isEmpty
+            {
                 return token
             }
             // … or flat.
@@ -37,7 +38,8 @@ public enum ClaudeCredentials {
         }
         // Bare token stored directly.
         if let s = data.utf8String?.trimmed,
-           s.hasPrefix("sk-ant") {
+            s.hasPrefix("sk-ant")
+        {
             return s
         }
         return nil

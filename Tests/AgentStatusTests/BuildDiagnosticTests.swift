@@ -49,14 +49,14 @@ final class BuildDiagnosticTests: XCTestCase {
     func testProseTimestampsURLsStackFramesAndBareErrorsDoNotParse() {
         let mustNot = [
             "Cloning into 'repo'... done",
-            "https://example.com:443: error connecting",            // a URL, not a path
-            "12:30:05: error: this is a log timestamp",             // no path component
+            "https://example.com:443: error connecting",  // a URL, not a path
+            "12:30:05: error: this is a log timestamp",  // no path component
             "note: this is just prose with a colon",
-            "TODO: fix this: error: not really",                    // no line number
+            "TODO: fix this: error: not really",  // no line number
             "Binary file matches",
-            "  at Object.<anonymous> (/app/x.js:3:9)",              // a stack frame, not a diagnostic
-            "error: something went wrong",                          // no file at all
-            "warning:12: warning: a bare word is not a path",       // no separator or extension
+            "  at Object.<anonymous> (/app/x.js:3:9)",  // a stack frame, not a diagnostic
+            "error: something went wrong",  // no file at all
+            "warning:12: warning: a bare word is not a path",  // no separator or extension
             "",
         ]
         for line in mustNot {

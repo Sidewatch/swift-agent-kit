@@ -106,8 +106,10 @@ public struct TimelineEvent: Equatable, Sendable {
     public let source: Source
 
     /// Creates a timeline entry.
-    public init(kind: Kind, title: String, detail: String, filePath: String?, timestamp: String, anchor: String? = nil, command: String? = nil,
-                usage: Usage? = nil, model: String? = nil, toolUseID: String? = nil, fullText: String? = nil, source: Source = .person) {
+    public init(
+        kind: Kind, title: String, detail: String, filePath: String?, timestamp: String, anchor: String? = nil, command: String? = nil,
+        usage: Usage? = nil, model: String? = nil, toolUseID: String? = nil, fullText: String? = nil, source: Source = .person
+    ) {
         self.kind = kind
         self.title = title
         self.detail = detail

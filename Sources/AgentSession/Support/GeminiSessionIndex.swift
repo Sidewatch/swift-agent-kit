@@ -34,7 +34,10 @@ final class GeminiSessionIndex: @unchecked Sendable {
         for runtime in runtimeRoots {
             for id in Set([projects(in: runtime)[path], Self.legacyID(path)].compactMap { $0 }) {
                 let chats = runtime.appendingPathComponent("tmp/\(id)/chats", isDirectory: true)
-                guard let files = try? FileManager.default.contentsOfDirectory(at: chats, includingPropertiesForKeys: [.contentModificationDateKey]) else { continue }
+                guard
+                    let files = try? FileManager.default.contentsOfDirectory(
+                        at: chats, includingPropertiesForKeys: [.contentModificationDateKey])
+                else { continue }
                 for file in files where file.lastPathComponent.hasPrefix("session-") && file.pathExtension == "jsonl" {
                     let date = file.modificationDate ?? .distantPast
                     if best.map({ date > $0.date }) ?? true { best = (file, date) }

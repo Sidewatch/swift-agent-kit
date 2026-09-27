@@ -42,7 +42,7 @@ public enum ClaudeUsageEndpoint {
         req.setValue("oauth-2025-04-20", forHTTPHeaderField: "anthropic-beta")
         req.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
         req.setValue(userAgent, forHTTPHeaderField: "User-Agent")
-        nonisolated(unsafe) var result: (Int, String)?   // written once by the task, read after the semaphore
+        nonisolated(unsafe) var result: (Int, String)?  // written once by the task, read after the semaphore
         let sem = DispatchSemaphore(value: 0)
         URLSession.shared.dataTask(with: req) { data, resp, err in
             defer { sem.signal() }

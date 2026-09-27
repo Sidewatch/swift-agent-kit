@@ -16,8 +16,10 @@ import XCTest
 /// and each turn knows the files it edited.
 final class TurnBoundaryTests: XCTestCase {
 
-    private func event(_ kind: TimelineEvent.Kind, _ detail: String, file: String? = nil,
-                       at timestamp: String = "10:00") -> TimelineEvent {
+    private func event(
+        _ kind: TimelineEvent.Kind, _ detail: String, file: String? = nil,
+        at timestamp: String = "10:00"
+    ) -> TimelineEvent {
         TimelineEvent(kind: kind, title: "t", detail: detail, filePath: file, timestamp: timestamp)
     }
 

@@ -24,8 +24,9 @@ final class CodexAdapterTests: XCTestCase {
 
     func testARealRolloutGivesThePromptTheReplyAndTheShellCalls() throws {
         let e = try events("rollout-small")
-        XCTAssertEqual(e.filter { $0.kind == .userPrompt }.map(\.detail), ["List the files"],
-                       "the injected-context message (its only kind is not user.*) is not a prompt")
+        XCTAssertEqual(
+            e.filter { $0.kind == .userPrompt }.map(\.detail), ["List the files"],
+            "the injected-context message (its only kind is not user.*) is not a prompt")
         XCTAssertEqual(e.filter { $0.kind == .assistantText }.map(\.detail), ["Found 2 files."])
         let shells = e.filter { $0.command == "ls" }
         XCTAssertEqual(shells.count, 2, "the function call and the custom tool call, each `shell` with argv [ls]")
@@ -60,19 +61,24 @@ final class CodexAdapterTests: XCTestCase {
         XCTAssertTrue(CodexTranscriptState.isContextualText("<environment_context><cwd>/p</cwd></environment_context>"))
         XCTAssertTrue(CodexTranscriptState.isContextualText("  <turn_aborted>\nstopped\n</turn_aborted>\n"))
         XCTAssertTrue(CodexTranscriptState.isContextualText("# AGENTS.md instructions for /p\n<INSTRUCTIONS>x</INSTRUCTIONS>"))
-        XCTAssertTrue(CodexTranscriptState.isContextualText("Warning: apply_patch was requested via exec_command. Use the apply_patch tool instead of exec_command."))
+        XCTAssertTrue(
+            CodexTranscriptState.isContextualText(
+                "Warning: apply_patch was requested via exec_command. Use the apply_patch tool instead of exec_command."))
         XCTAssertFalse(CodexTranscriptState.isContextualText("Warning: the build fails on CI, fix it"))
         XCTAssertFalse(CodexTranscriptState.isContextualText("<b>bold</b> should render"))
         XCTAssertFalse(CodexTranscriptState.isContextualText("Refactor the parser"))
         let content: [[String: Any]] = [["type": "input_text", "text": "<environment_context>x</environment_context>"]]
-        XCTAssertTrue(CodexTranscriptState.isTypedByPerson(["internal_chat_message_metadata_passthrough": ["content_item_kinds": ["user.input"]]], content: content),
-                      "a current rollout's kinds decide over the text")
+        XCTAssertTrue(
+            CodexTranscriptState.isTypedByPerson(
+                ["internal_chat_message_metadata_passthrough": ["content_item_kinds": ["user.input"]]], content: content),
+            "a current rollout's kinds decide over the text")
         XCTAssertFalse(CodexTranscriptState.isTypedByPerson([:], content: content))
     }
 
     /// `codex-rs/apply-patch/src/parser.rs` markers; a relative path is the session's cwd's.
     func testAPatchIsTheFilesItEditsUnderTheSessionsDirectory() throws {
-        let patch = "*** Begin Patch\n*** Update File: src/a.swift\n@@\n-x\n+y\n*** Add File: b.md\n+hi\n*** Delete File: /abs/c.txt\n*** End Patch"
+        let patch =
+            "*** Begin Patch\n*** Update File: src/a.swift\n@@\n-x\n+y\n*** Add File: b.md\n+hi\n*** Delete File: /abs/c.txt\n*** End Patch"
         XCTAssertEqual(ApplyPatch.paths(patch), ["src/a.swift", "b.md", "/abs/c.txt"])
         var state = CodexTranscriptState()
         for line in [

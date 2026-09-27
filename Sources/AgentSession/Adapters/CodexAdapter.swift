@@ -25,7 +25,8 @@ public struct CodexAdapter: AgentAdapter {
 
     /// An adapter over the real Codex home (`$CODEX_HOME`, else `~/.codex`).
     public init() {
-        let home = ProcessInfo.processInfo.environment["CODEX_HOME"].map { URL(fileURLWithPath: $0, isDirectory: true) }
+        let home =
+            ProcessInfo.processInfo.environment["CODEX_HOME"].map { URL(fileURLWithPath: $0, isDirectory: true) }
             ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex", isDirectory: true)
         self.init(sessionsRoot: home.appendingPathComponent("sessions", isDirectory: true))
     }

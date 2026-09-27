@@ -56,7 +56,9 @@ public struct BurnDetector: Sendable, Equatable {
     /// the command's first line, for a status line. Must not key on the first line alone:
     /// scripted commands that share a `cd …; python3 - <<'EOF'` opener would read as a loop.
     public static func key(for event: TimelineEvent) -> (key: String, label: String)? {
-        let line = event.detail.split(maxSplits: 1, omittingEmptySubsequences: true, whereSeparator: \.isNewline).first.map(String.init) ?? event.detail
+        let line =
+            event.detail.split(maxSplits: 1, omittingEmptySubsequences: true, whereSeparator: \.isNewline).first.map(String.init)
+            ?? event.detail
         let label = line.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !label.isEmpty else { return nil }
         let whole = event.detail.split(whereSeparator: { $0.isWhitespace || $0.isNewline }).joined(separator: " ").prefix(2000)
@@ -70,13 +72,13 @@ public struct BurnDetector: Sendable, Equatable {
         scan: for event in events.suffix(window).reversed() {
             switch event.kind {
             case .assistantText:
-                continue                                        // prose between repeats does not break a live loop
+                continue  // prose between repeats does not break a live loop
             case .userPrompt, .fileEdit:
-                break scan                                      // distinct work or user intervention: the run ends here
+                break scan  // distinct work or user intervention: the run ends here
             case .toolUse:
-                guard let candidate = Self.key(for: event) else { continue }   // bookkeeping: skip
+                guard let candidate = Self.key(for: event) else { continue }  // bookkeeping: skip
                 if latest == nil { latest = candidate }
-                guard latest?.key == candidate.key else { break scan }         // a distinct tool call
+                guard latest?.key == candidate.key else { break scan }  // a distinct tool call
                 count += 1
             }
         }
@@ -86,8 +88,9 @@ public struct BurnDetector: Sendable, Equatable {
             signalledCount = 0
             return .ended
         }
-        let notice = String(localized: "agent may be looping: \(latest.label) ×\(count)", bundle: .module,
-                            comment: "Status-bar notice; the first argument is the repeated command, the second how many times in a row it ran")
+        let notice = String(
+            localized: "agent may be looping: \(latest.label) ×\(count)", bundle: .module,
+            comment: "Status-bar notice; the first argument is the repeated command, the second how many times in a row it ran")
         if signalledKey == latest.key {
             guard count != signalledCount else { return .none }
             signalledCount = count

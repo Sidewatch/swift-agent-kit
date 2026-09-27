@@ -31,7 +31,9 @@ public enum PersistedOutput {
 
     /// `text` with a stub replaced by the last `cap` characters of the file it names (an ellipsis
     /// first when cut), or `text` itself when it is no stub or the file cannot be read.
-    public static func resolved(_ text: String, cap: Int, read: (String) -> String? = { try? String(contentsOfFile: $0, encoding: .utf8) }) -> String {
+    public static func resolved(_ text: String, cap: Int, read: (String) -> String? = { try? String(contentsOfFile: $0, encoding: .utf8) })
+        -> String
+    {
         guard let path = savedPath(in: text), let full = read(path) else { return text }
         return full.count > cap ? "…" + String(full.suffix(cap)) : full
     }

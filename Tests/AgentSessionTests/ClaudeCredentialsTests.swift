@@ -24,13 +24,15 @@ final class ClaudeCredentialsTests: XCTestCase {
     }
 
     func testFlatShape() {
-        XCTAssertEqual(ClaudeCredentials.accessToken(fromKeychainData: data(#"{"accessToken":"sk-ant-oat01-xyz"}"#)),
-                       "sk-ant-oat01-xyz")
+        XCTAssertEqual(
+            ClaudeCredentials.accessToken(fromKeychainData: data(#"{"accessToken":"sk-ant-oat01-xyz"}"#)),
+            "sk-ant-oat01-xyz")
     }
 
     func testBareToken() {
-        XCTAssertEqual(ClaudeCredentials.accessToken(fromKeychainData: data("  sk-ant-oat01-bare\n  ")),
-                       "sk-ant-oat01-bare")
+        XCTAssertEqual(
+            ClaudeCredentials.accessToken(fromKeychainData: data("  sk-ant-oat01-bare\n  ")),
+            "sk-ant-oat01-bare")
     }
 
     func testGarbageAndEmptyReturnNil() {

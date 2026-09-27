@@ -161,11 +161,13 @@ public struct ClaudeQuota: Sendable, Equatable {
         var list: [NamedWindow] = []
         for row in rows {
             guard let kind = row["kind"] as? String,
-                  let percent = (row["percent"] as? NSNumber)?.doubleValue else { continue }
+                let percent = (row["percent"] as? NSNumber)?.doubleValue
+            else { continue }
             var key = kind
             if kind == "weekly_scoped", let scope = row["scope"] as? [String: Any] {
                 let model = (scope["model"] as? [String: Any])?["display_name"] as? String
-                let surface = (scope["surface"] as? [String: Any])?["display_name"] as? String
+                let surface =
+                    (scope["surface"] as? [String: Any])?["display_name"] as? String
                     ?? scope["surface"] as? String
                 if let name = model ?? surface { key = "weekly_scoped:\(name)" }
             }
@@ -179,7 +181,8 @@ public struct ClaudeQuota: Sendable, Equatable {
     static func legacyWindows(_ obj: [String: Any]) -> [NamedWindow] {
         func window(_ value: Any) -> Window? {
             guard let w = value as? [String: Any],
-                  let util = (w["utilization"] as? NSNumber)?.doubleValue else { return nil }
+                let util = (w["utilization"] as? NSNumber)?.doubleValue
+            else { return nil }
             return Window(utilization: util, resetsAt: (w["resets_at"] as? String).flatMap(parseDate))
         }
         var list: [NamedWindow] = []
@@ -197,7 +200,8 @@ public struct ClaudeQuota: Sendable, Equatable {
         guard let b = value as? [String: Any], let rows = b["rows"] as? [[String: Any]] else { return [] }
         return rows.compactMap { row in
             guard let name = row["display_name"] as? String ?? row["key"] as? String,
-                  let percent = (row["percent"] as? NSNumber)?.intValue, percent > 0 else { return nil }
+                let percent = (row["percent"] as? NSNumber)?.intValue, percent > 0
+            else { return nil }
             return Share(name: name, percent: percent)
         }
     }
@@ -218,7 +222,8 @@ public struct ClaudeQuota: Sendable, Equatable {
         if let d = iso.date(from: s) { return d }
         // Strip the fractional seconds (from "." up to the timezone) and retry.
         if let dot = s.firstIndex(of: "."),
-           let tz = s[s.index(after: dot)...].firstIndex(where: { $0 == "+" || $0 == "-" || $0 == "Z" }) {
+            let tz = s[s.index(after: dot)...].firstIndex(where: { $0 == "+" || $0 == "-" || $0 == "Z" })
+        {
             return iso.date(from: String(s[..<dot]) + String(s[tz...]))
         }
         return nil
@@ -230,27 +235,31 @@ extension ClaudeQuota.Spend {
     /// `percent` and `enabled`. Nil when disabled or malformed.
     static func parse(_ value: Any?) -> ClaudeQuota.Spend? {
         guard let s = value as? [String: Any], (s["enabled"] as? Bool) != false,
-              let used = s["used"] as? [String: Any], let limit = s["limit"] as? [String: Any],
-              let usedMinor = (used["amount_minor"] as? NSNumber)?.intValue,
-              let limitMinor = (limit["amount_minor"] as? NSNumber)?.intValue,
-              let currency = used["currency"] as? String else { return nil }
+            let used = s["used"] as? [String: Any], let limit = s["limit"] as? [String: Any],
+            let usedMinor = (used["amount_minor"] as? NSNumber)?.intValue,
+            let limitMinor = (limit["amount_minor"] as? NSNumber)?.intValue,
+            let currency = used["currency"] as? String
+        else { return nil }
         let exponent = (used["exponent"] as? NSNumber)?.intValue ?? 2
         let percent = (s["percent"] as? NSNumber)?.intValue ?? ratio(usedMinor, limitMinor)
-        return ClaudeQuota.Spend(usedMinor: usedMinor, limitMinor: limitMinor, currency: currency,
-                                 exponent: exponent, percent: percent)
+        return ClaudeQuota.Spend(
+            usedMinor: usedMinor, limitMinor: limitMinor, currency: currency,
+            exponent: exponent, percent: percent)
     }
 
     /// The older `extra_usage` object: `used_credits` / `monthly_limit` already in minor units,
     /// `currency`, `decimal_places`, `utilization`. Nil unless `is_enabled`.
     static func parse(extraUsage value: Any?) -> ClaudeQuota.Spend? {
         guard let e = value as? [String: Any], e["is_enabled"] as? Bool == true,
-              let used = (e["used_credits"] as? NSNumber)?.doubleValue,
-              let limit = (e["monthly_limit"] as? NSNumber)?.doubleValue,
-              let currency = e["currency"] as? String else { return nil }
+            let used = (e["used_credits"] as? NSNumber)?.doubleValue,
+            let limit = (e["monthly_limit"] as? NSNumber)?.doubleValue,
+            let currency = e["currency"] as? String
+        else { return nil }
         let usedMinor = Int(used.rounded()), limitMinor = Int(limit.rounded())
         let percent = (e["utilization"] as? NSNumber).map { Int($0.doubleValue.rounded()) } ?? ratio(usedMinor, limitMinor)
-        return ClaudeQuota.Spend(usedMinor: usedMinor, limitMinor: limitMinor, currency: currency,
-                                 exponent: (e["decimal_places"] as? NSNumber)?.intValue ?? 2, percent: percent)
+        return ClaudeQuota.Spend(
+            usedMinor: usedMinor, limitMinor: limitMinor, currency: currency,
+            exponent: (e["decimal_places"] as? NSNumber)?.intValue ?? 2, percent: percent)
     }
 
     private static func ratio(_ used: Int, _ limit: Int) -> Int {

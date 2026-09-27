@@ -61,8 +61,9 @@ final class ModelPricingTests: XCTestCase {
     }
 
     func testCostAddsTheFourTiers() {
-        let usd = ModelPricing.cost(model: "claude-opus-5", input: 1_000_000, cacheWrite: 1_000_000,
-                                    cacheRead: 1_000_000, output: 1_000_000)
+        let usd = ModelPricing.cost(
+            model: "claude-opus-5", input: 1_000_000, cacheWrite: 1_000_000,
+            cacheRead: 1_000_000, output: 1_000_000)
         XCTAssertEqual(usd, 5 + 6.25 + 0.5 + 25, accuracy: 1e-9)
     }
 }

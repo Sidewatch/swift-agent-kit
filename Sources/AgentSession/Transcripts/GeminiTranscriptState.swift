@@ -138,15 +138,20 @@ extension GeminiTranscriptState {
         case "user":
             let text = partsText(message["displayContent"] ?? message["content"]).trimmed
             guard isTypedByPerson(text) else { return entry }
-            entry.events = [TimelineEvent(kind: .userPrompt, title: TranscriptText.promptTitle, detail: TranscriptText.firstLine(text),
-                                          filePath: nil, timestamp: ts, fullText: text)]
+            entry.events = [
+                TimelineEvent(
+                    kind: .userPrompt, title: TranscriptText.promptTitle, detail: TranscriptText.firstLine(text),
+                    filePath: nil, timestamp: ts, fullText: text)
+            ]
         case "gemini":
             let model = message["model"] as? String
             entry.model = model
             let text = partsText(message["content"]).trimmed
             if !text.isEmpty {
-                entry.events.append(TimelineEvent(kind: .assistantText, title: "Gemini", detail: TranscriptText.firstLine(text),
-                                                  filePath: nil, timestamp: ts, model: model, fullText: text))
+                entry.events.append(
+                    TimelineEvent(
+                        kind: .assistantText, title: "Gemini", detail: TranscriptText.firstLine(text),
+                        filePath: nil, timestamp: ts, model: model, fullText: text))
             }
             for call in message["toolCalls"] as? [[String: Any]] ?? [] {
                 let (event, edited) = toolEvent(call, model: model, fallbackTime: ts)
@@ -155,8 +160,9 @@ extension GeminiTranscriptState {
             }
             entry.tokens = Tokens(message["tokens"])
             if let t = entry.tokens, !entry.events.isEmpty {
-                entry.events[entry.events.count - 1].usage = TimelineEvent.Usage(input: max(0, t.input - t.cached), cacheWrite: 0,
-                                                                                 cacheRead: t.cached, output: t.output)
+                entry.events[entry.events.count - 1].usage = TimelineEvent.Usage(
+                    input: max(0, t.input - t.cached), cacheWrite: 0,
+                    cacheRead: t.cached, output: t.output)
             }
         default:
             break
@@ -174,14 +180,16 @@ extension GeminiTranscriptState {
         var edited: String?
         if editTools.contains(name), let path = args["file_path"] as? String {
             edited = path
-            event = TimelineEvent(kind: .fileEdit, title: name, detail: TranscriptText.shortPath(path), filePath: path,
-                                  timestamp: ts, anchor: (args["new_string"] as? String).flatMap(TranscriptText.anchor),
-                                  model: model, toolUseID: id)
+            event = TimelineEvent(
+                kind: .fileEdit, title: name, detail: TranscriptText.shortPath(path), filePath: path,
+                timestamp: ts, anchor: (args["new_string"] as? String).flatMap(TranscriptText.anchor),
+                model: model, toolUseID: id)
         } else {
             let command = name == shellTool ? args["command"] as? String : nil
             let subject = command ?? subjectArguments.lazy.compactMap { args[$0] as? String }.first ?? ""
-            event = TimelineEvent(kind: .toolUse, title: name, detail: TranscriptText.firstLine(subject, 120), filePath: nil,
-                                  timestamp: ts, command: command, model: model, toolUseID: id)
+            event = TimelineEvent(
+                kind: .toolUse, title: name, detail: TranscriptText.firstLine(subject, 120), filePath: nil,
+                timestamp: ts, command: command, model: model, toolUseID: id)
         }
         let (text, failed) = resultText(call)
         if !text.isEmpty {
@@ -195,7 +203,7 @@ extension GeminiTranscriptState {
     /// `utils/sessionUtils.ts`): not empty, not a `/` command or `?` help, not injected context.
     static func isTypedByPerson(_ trimmed: String) -> Bool {
         !(trimmed.isEmpty || trimmed.hasPrefix("/") || trimmed.hasPrefix("?")
-          || trimmed.hasPrefix("<session_context>") || trimmed.hasPrefix("<hook_context>"))
+            || trimmed.hasPrefix("<session_context>") || trimmed.hasPrefix("<hook_context>"))
     }
 
     /// A `PartListUnion`'s text: a string, one part, or a list of either (`partListUnionToString`).
@@ -211,7 +219,9 @@ extension GeminiTranscriptState {
     static func resultText(_ call: [String: Any]) -> (String, Bool) {
         let failed = call["status"] as? String == "error"
         if let shown = call["resultDisplay"] as? String { return (shown, failed) }
-        let responses = (call["result"] as? [[String: Any]] ?? []).compactMap { ($0["functionResponse"] as? [String: Any])?["response"] as? [String: Any] }
+        let responses = (call["result"] as? [[String: Any]] ?? []).compactMap {
+            ($0["functionResponse"] as? [String: Any])?["response"] as? [String: Any]
+        }
         let text = responses.compactMap { ($0["output"] as? String) ?? ($0["error"] as? String) }.joined(separator: "\n")
         return (text, failed || responses.contains { $0["error"] != nil })
     }

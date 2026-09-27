@@ -19,7 +19,9 @@ final class BurnDetectorTests: XCTestCase {
     private func tool(_ command: String) -> TimelineEvent {
         TimelineEvent(kind: .toolUse, title: "Bash", detail: command, filePath: nil, timestamp: "2026-09-05T10:00:00Z")
     }
-    private func prose() -> TimelineEvent { TimelineEvent(kind: .assistantText, title: "", detail: "thinking", filePath: nil, timestamp: "t") }
+    private func prose() -> TimelineEvent {
+        TimelineEvent(kind: .assistantText, title: "", detail: "thinking", filePath: nil, timestamp: "t")
+    }
     private func prompt() -> TimelineEvent { TimelineEvent(kind: .userPrompt, title: "", detail: "do it", filePath: nil, timestamp: "t") }
 
     func testTheSameCommandThreeTimesStartsAnEpisode() {
@@ -33,13 +35,17 @@ final class BurnDetectorTests: XCTestCase {
 
     func testDifferentScriptsSharingAFirstLineAreNotALoop() {
         var d = BurnDetector()
-        let scripts = ["cd /p; python3 - <<'EOF'\nprint('one')\nEOF", "cd /p; python3 - <<'EOF'\nprint('two')\nEOF", "cd /p; python3 - <<'EOF'\nprint('three')\nEOF"]
+        let scripts = [
+            "cd /p; python3 - <<'EOF'\nprint('one')\nEOF", "cd /p; python3 - <<'EOF'\nprint('two')\nEOF",
+            "cd /p; python3 - <<'EOF'\nprint('three')\nEOF",
+        ]
         XCTAssertEqual(d.update(events: scripts.map(tool)), .none)
     }
 
     func testProseIsSkippedButAPromptOrADistinctCallEndsTheRun() {
         var d = BurnDetector()
-        XCTAssertEqual(d.update(events: [tool("ls"), prose(), tool("ls"), prose(), tool("ls")]), .started(notice: "agent may be looping: ls ×3"))
+        XCTAssertEqual(
+            d.update(events: [tool("ls"), prose(), tool("ls"), prose(), tool("ls")]), .started(notice: "agent may be looping: ls ×3"))
         XCTAssertEqual(d.update(events: [tool("ls"), tool("ls"), prompt(), tool("ls")]), .ended, "a prompt in the window ends the run")
         XCTAssertEqual(d.update(events: [tool("ls"), tool("ls"), tool("git status"), tool("ls")]), .none, "no episode, nothing to end")
     }
@@ -47,7 +53,10 @@ final class BurnDetectorTests: XCTestCase {
     func testTheNoticeNamesTheFirstLineAndBookkeepingIsIgnored() {
         var d = BurnDetector()
         let empty = TimelineEvent(kind: .toolUse, title: "TodoWrite", detail: "", filePath: nil, timestamp: "t")
-        let events = [tool("cd /p; swift test\n# same script"), empty, tool("cd /p; swift test\n# same script"), tool("cd /p; swift test\n# same script")]
+        let events = [
+            tool("cd /p; swift test\n# same script"), empty, tool("cd /p; swift test\n# same script"),
+            tool("cd /p; swift test\n# same script"),
+        ]
         XCTAssertEqual(d.update(events: events), .started(notice: "agent may be looping: cd /p; swift test ×3"))
     }
 
@@ -56,6 +65,8 @@ final class BurnDetectorTests: XCTestCase {
         _ = d.update(events: (1...3).map { _ in tool("make") })
         d.reset()
         XCTAssertFalse(d.isLooping)
-        XCTAssertEqual(d.update(events: (1...3).map { _ in tool("make") }), .started(notice: "agent may be looping: make ×3"), "a fresh episode after reset")
+        XCTAssertEqual(
+            d.update(events: (1...3).map { _ in tool("make") }), .started(notice: "agent may be looping: make ×3"),
+            "a fresh episode after reset")
     }
 }

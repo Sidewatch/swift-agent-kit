@@ -27,11 +27,15 @@ final class UsageSessionStatsTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: root) }
         // Session A spans 90 minutes across three messages (the middle one out of order);
         // session B is ten minutes but carries far more tokens on a different day.
-        let a = [line("2026-09-01T10:00:00Z", id: "a1", output: 10),
-                 line("2026-09-01T11:30:00Z", id: "a3", output: 10),
-                 line("2026-09-01T10:40:00Z", id: "a2", output: 10)].joined(separator: "\n")
-        let b = [line("2026-09-03T10:00:00Z", id: "b1", output: 5_000),
-                 line("2026-09-03T10:10:00Z", id: "b2", output: 5_000)].joined(separator: "\n")
+        let a = [
+            line("2026-09-01T10:00:00Z", id: "a1", output: 10),
+            line("2026-09-01T11:30:00Z", id: "a3", output: 10),
+            line("2026-09-01T10:40:00Z", id: "a2", output: 10),
+        ].joined(separator: "\n")
+        let b = [
+            line("2026-09-03T10:00:00Z", id: "b1", output: 5_000),
+            line("2026-09-03T10:10:00Z", id: "b2", output: 5_000),
+        ].joined(separator: "\n")
         try (a + "\n").write(to: proj.appendingPathComponent("a.jsonl"), atomically: true, encoding: .utf8)
         try (b + "\n").write(to: proj.appendingPathComponent("b.jsonl"), atomically: true, encoding: .utf8)
 

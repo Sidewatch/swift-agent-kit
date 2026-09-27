@@ -27,7 +27,8 @@ public struct GrokAdapter: AgentAdapter {
 
     /// An adapter over the real Grok home (`$GROK_HOME`, else `~/.grok`).
     public init() {
-        let home = ProcessInfo.processInfo.environment["GROK_HOME"].flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0, isDirectory: true) }
+        let home =
+            ProcessInfo.processInfo.environment["GROK_HOME"].flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0, isDirectory: true) }
             ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".grok", isDirectory: true)
         self.init(sessionsRoot: home.appendingPathComponent("sessions", isDirectory: true))
     }

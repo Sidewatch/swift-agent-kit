@@ -33,8 +33,9 @@ struct UsageRecord {
     /// Nil unless the line is a JSON object carrying `message.usage`.
     init?(line: Data) {
         guard let obj = JSONFile.object(from: line),
-              let msg = obj["message"] as? [String: Any],
-              let usage = msg["usage"] as? [String: Any] else { return nil }
+            let msg = obj["message"] as? [String: Any],
+            let usage = msg["usage"] as? [String: Any]
+        else { return nil }
         id = (msg["id"] as? String) ?? (obj["requestId"] as? String)
         model = (msg["model"] as? String).flatMap { $0.isEmpty || $0 == "<synthetic>" ? nil : $0 } ?? "unknown"
         // The LOCAL calendar day and hour. Must not be the timestamp's first ten characters

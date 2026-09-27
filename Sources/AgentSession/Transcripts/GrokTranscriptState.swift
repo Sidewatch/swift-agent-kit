@@ -35,14 +35,18 @@ struct GrokTranscriptState: TranscriptParsing {
         switch item["type"] as? String {
         case "user":
             guard let text = Self.typedText(item) else { return }
-            buffer.append(TimelineEvent(kind: .userPrompt, title: TranscriptText.promptTitle, detail: TranscriptText.firstLine(text),
-                                        filePath: nil, timestamp: "", fullText: text))
+            buffer.append(
+                TimelineEvent(
+                    kind: .userPrompt, title: TranscriptText.promptTitle, detail: TranscriptText.firstLine(text),
+                    filePath: nil, timestamp: "", fullText: text))
         case "assistant":
             let model = item["model_id"] as? String
             let text = (item["content"] as? String ?? "").trimmed
             if !text.isEmpty {
-                buffer.append(TimelineEvent(kind: .assistantText, title: "Grok", detail: TranscriptText.firstLine(text),
-                                            filePath: nil, timestamp: "", model: model, fullText: text))
+                buffer.append(
+                    TimelineEvent(
+                        kind: .assistantText, title: "Grok", detail: TranscriptText.firstLine(text),
+                        filePath: nil, timestamp: "", model: model, fullText: text))
             }
             for call in item["tool_calls"] as? [[String: Any]] ?? [] { ingestToolCall(call, model: model) }
         case "tool_result":
@@ -51,7 +55,7 @@ struct GrokTranscriptState: TranscriptParsing {
         case "backend_tool_call":
             ingestBackendCall(item["kind"] as? [String: Any] ?? [:])
         default:
-            break   // system prompt, reasoning
+            break  // system prompt, reasoning
         }
     }
 
@@ -62,21 +66,27 @@ struct GrokTranscriptState: TranscriptParsing {
         let args = JSONFile.object(from: Data(raw.utf8)) ?? [:]
         let id = call["id"] as? String
         if name == "apply_patch" {
-            for path in ApplyPatch.paths((args["patch"] ?? args["input"]) as? String ?? raw) { appendEdit(name, path, anchor: nil, model: model, id: id) }
+            for path in ApplyPatch.paths((args["patch"] ?? args["input"]) as? String ?? raw) {
+                appendEdit(name, path, anchor: nil, model: model, id: id)
+            }
         } else if Self.editTools.contains(name), let path = Self.firstString(args, Self.pathArguments) {
             appendEdit(name, path, anchor: (args["new_string"] as? String).flatMap(TranscriptText.anchor), model: model, id: id)
         } else {
             let command = Self.shellTools.contains(name) ? args["command"] as? String : nil
             let subject = command ?? Self.firstString(args, Self.subjectArguments) ?? ""
-            buffer.append(TimelineEvent(kind: .toolUse, title: name, detail: TranscriptText.firstLine(subject, 120), filePath: nil,
-                                        timestamp: "", command: command, model: model, toolUseID: id))
+            buffer.append(
+                TimelineEvent(
+                    kind: .toolUse, title: name, detail: TranscriptText.firstLine(subject, 120), filePath: nil,
+                    timestamp: "", command: command, model: model, toolUseID: id))
         }
     }
 
     private mutating func appendEdit(_ tool: String, _ path: String, anchor: String?, model: String?, id: String?) {
         edited.insert(path)
-        buffer.append(TimelineEvent(kind: .fileEdit, title: tool, detail: TranscriptText.shortPath(path), filePath: path,
-                                    timestamp: "", anchor: anchor, model: model, toolUseID: id))
+        buffer.append(
+            TimelineEvent(
+                kind: .fileEdit, title: tool, detail: TranscriptText.shortPath(path), filePath: path,
+                timestamp: "", anchor: anchor, model: model, toolUseID: id))
     }
 
     /// A server-side tool xAI ran for the model: web or X search, or the code interpreter.
@@ -84,7 +94,8 @@ struct GrokTranscriptState: TranscriptParsing {
         guard let tool = kind["tool_type"] as? String, Self.backendTools.contains(tool) else { return }
         let action = kind["action"] as? [String: Any]
         let subject = (action?["query"] as? String) ?? (action?["url"] as? String) ?? ""
-        buffer.append(TimelineEvent(kind: .toolUse, title: tool, detail: TranscriptText.firstLine(subject, 120), filePath: nil, timestamp: ""))
+        buffer.append(
+            TimelineEvent(kind: .toolUse, title: tool, detail: TranscriptText.firstLine(subject, 120), filePath: nil, timestamp: ""))
     }
 
     // MARK: - Materialization

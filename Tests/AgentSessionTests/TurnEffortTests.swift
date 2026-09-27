@@ -15,10 +15,13 @@ import XCTest
 /// Tests for `TurnBoundary.effort(in:)` and `TurnEffort`'s labels.
 final class TurnEffortTests: XCTestCase {
 
-    private func event(_ kind: TimelineEvent.Kind, _ detail: String = "", usage: TimelineEvent.Usage? = nil,
-                       model: String? = nil) -> TimelineEvent {
-        TimelineEvent(kind: kind, title: "t", detail: detail, filePath: nil, timestamp: "10:00",
-                      usage: usage, model: model)
+    private func event(
+        _ kind: TimelineEvent.Kind, _ detail: String = "", usage: TimelineEvent.Usage? = nil,
+        model: String? = nil
+    ) -> TimelineEvent {
+        TimelineEvent(
+            kind: kind, title: "t", detail: detail, filePath: nil, timestamp: "10:00",
+            usage: usage, model: model)
     }
 
     private let usage = TimelineEvent.Usage(input: 4000, cacheWrite: 0, cacheRead: 12000, output: 300)
@@ -37,7 +40,8 @@ final class TurnEffortTests: XCTestCase {
         let first = turns[0].effort(in: events)
         XCTAssertEqual(first.toolCalls, 2, "a tool call and a file edit; prose is not a call")
         XCTAssertEqual(first.model, "claude-opus-5", "the LAST model seen in the turn")
-        let expected = ModelPricing.cost(model: "claude-sonnet-5", input: 4000, cacheWrite: 0, cacheRead: 12000, output: 300)
+        let expected =
+            ModelPricing.cost(model: "claude-sonnet-5", input: 4000, cacheWrite: 0, cacheRead: 12000, output: 300)
             + ModelPricing.cost(model: "claude-opus-5", input: 4000, cacheWrite: 0, cacheRead: 12000, output: 300)
         XCTAssertEqual(first.cost, expected, accuracy: 1e-9, "each message at its OWN model's price")
         XCTAssertGreaterThan(first.cost, 0)
@@ -47,12 +51,13 @@ final class TurnEffortTests: XCTestCase {
     func testAUsageRecordBeforeAnyModelNameIsPricedAtTheTurnsLastModelOrTheDefault() {
         let events = [
             event(.userPrompt, "go"),
-            event(.assistantText, "…", usage: usage),                       // no model on this message
+            event(.assistantText, "…", usage: usage),  // no model on this message
             event(.assistantText, "…", model: "claude-haiku-4-5-20251001"),
         ]
         let effort = TurnBoundary.turns(in: events)[0].effort(in: events)
-        XCTAssertEqual(effort.cost, ModelPricing.cost(model: "claude", input: 4000, cacheWrite: 0, cacheRead: 12000, output: 300), accuracy: 1e-9,
-                       "no model seen yet when the usage arrived: the default generation")
+        XCTAssertEqual(
+            effort.cost, ModelPricing.cost(model: "claude", input: 4000, cacheWrite: 0, cacheRead: 12000, output: 300), accuracy: 1e-9,
+            "no model seen yet when the usage arrived: the default generation")
         XCTAssertEqual(effort.model, "claude-haiku-4-5-20251001")
     }
 

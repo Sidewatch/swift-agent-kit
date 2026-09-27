@@ -22,7 +22,8 @@ final class SupportTests: XCTestCase {
 
     func testNewestFilePicksByModificationDateWithinTheExtensions() throws {
         let d = try tempDir(); defer { try? FileManager.default.removeItem(at: d) }
-        let old = d.appendingPathComponent("old.jsonl"), new = d.appendingPathComponent("new.jsonl"), other = d.appendingPathComponent("newer.txt")
+        let old = d.appendingPathComponent("old.jsonl"), new = d.appendingPathComponent("new.jsonl"),
+            other = d.appendingPathComponent("newer.txt")
         try "a".write(to: old, atomically: true, encoding: .utf8)
         try "b".write(to: new, atomically: true, encoding: .utf8)
         try "c".write(to: other, atomically: true, encoding: .utf8)
@@ -45,7 +46,7 @@ final class SupportTests: XCTestCase {
     }
 
     func testClockFormatIs24HourRegardlessOfLocale() {
-        let date = Date(timeIntervalSince1970: 1_700_000_000)   // 2023-11-14T22:13:20Z
+        let date = Date(timeIntervalSince1970: 1_700_000_000)  // 2023-11-14T22:13:20Z
         let text = ClockFormat.hhmm(date)
         XCTAssertNotNil(text.range(of: #"^\d\d:\d\d$"#, options: .regularExpression), text)
         XCTAssertFalse(text.contains("PM") || text.contains("AM"))

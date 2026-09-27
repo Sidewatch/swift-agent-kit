@@ -10,16 +10,20 @@ let package = Package(
         .library(name: "AgentStatus", targets: ["AgentStatus"]),
     ],
     dependencies: [
-        .package(path: "../swift-foundation-extensions"),
+        .package(path: "../swift-foundation-extensions")
     ],
     targets: [
-        .target(name: "AgentSession",
-                dependencies: [.product(name: "ProcessRunner", package: "swift-foundation-extensions"),
-                               .product(name: "FoundationExtensions", package: "swift-foundation-extensions")],
-                resources: [.process("Localizable.xcstrings")],
-                swiftSettings: [.swiftLanguageMode(.v6)]),
-        .target(name: "AgentStatus", dependencies: [.product(name: "FoundationExtensions", package: "swift-foundation-extensions")],
-                resources: [.process("Localizable.xcstrings")], swiftSettings: [.swiftLanguageMode(.v6)]),
+        .target(
+            name: "AgentSession",
+            dependencies: [
+                .product(name: "ProcessRunner", package: "swift-foundation-extensions"),
+                .product(name: "FoundationExtensions", package: "swift-foundation-extensions"),
+            ],
+            resources: [.process("Localizable.xcstrings")],
+            swiftSettings: [.swiftLanguageMode(.v6)]),
+        .target(
+            name: "AgentStatus", dependencies: [.product(name: "FoundationExtensions", package: "swift-foundation-extensions")],
+            resources: [.process("Localizable.xcstrings")], swiftSettings: [.swiftLanguageMode(.v6)]),
         .testTarget(name: "AgentSessionTests", dependencies: ["AgentSession", "AgentStatus"], resources: [.copy("Fixtures")]),
         .testTarget(name: "AgentStatusTests", dependencies: ["AgentStatus"]),
     ]

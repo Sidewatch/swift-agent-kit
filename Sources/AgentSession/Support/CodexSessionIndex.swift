@@ -34,7 +34,9 @@ final class CodexSessionIndex: @unchecked Sendable {
         let want = root.standardizedFileURL.path
         var best: (url: URL, date: Date)?
         for day in recentDayFolders() {
-            guard let files = try? FileManager.default.contentsOfDirectory(at: day, includingPropertiesForKeys: [.contentModificationDateKey]) else { continue }
+            guard
+                let files = try? FileManager.default.contentsOfDirectory(at: day, includingPropertiesForKeys: [.contentModificationDateKey])
+            else { continue }
             for file in files where file.lastPathComponent.hasPrefix("rollout-") && file.pathExtension == "jsonl" {
                 guard workingDirectory(of: file) == want else { continue }
                 let date = file.modificationDate ?? .distantPast
@@ -77,10 +79,11 @@ final class CodexSessionIndex: @unchecked Sendable {
         guard let handle = try? FileHandle(forReadingFrom: file) else { return nil }
         defer { try? handle.close() }
         guard let head = try? handle.read(upToCount: metaReadLimit),
-              let line = head.split(separator: UInt8(ascii: "\n"), maxSplits: 1).first,
-              let obj = JSONFile.object(from: Data(line)), obj["type"] as? String == "session_meta",
-              let payload = obj["payload"] as? [String: Any], payload["source"] is String || payload["source"] == nil,
-              let cwd = payload["cwd"] as? String else { return nil }
+            let line = head.split(separator: UInt8(ascii: "\n"), maxSplits: 1).first,
+            let obj = JSONFile.object(from: Data(line)), obj["type"] as? String == "session_meta",
+            let payload = obj["payload"] as? [String: Any], payload["source"] is String || payload["source"] == nil,
+            let cwd = payload["cwd"] as? String
+        else { return nil }
         return URL(fileURLWithPath: cwd).standardizedFileURL.path
     }
 }

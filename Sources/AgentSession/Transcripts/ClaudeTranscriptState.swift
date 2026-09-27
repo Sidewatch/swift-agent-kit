@@ -21,7 +21,6 @@ struct ClaudeTranscriptState: TranscriptParsing {
     /// synthesised init private and unreachable from the cache.
     init() {}
 
-
     // MARK: - Usage accumulators
 
     /// Estimated spend so far, in US dollars.
@@ -54,7 +53,6 @@ struct ClaudeTranscriptState: TranscriptParsing {
     /// Absolute paths of every file an edit tool wrote to.
     private var edited = Set<String>()
 
-
     // MARK: - Ingestion
 
     /// Folds one complete transcript line into the state.
@@ -72,7 +70,8 @@ struct ClaudeTranscriptState: TranscriptParsing {
     /// Updates the token/cost accumulators from one parsed line.
     private mutating func ingestUsage(_ obj: [String: Any]) {
         guard let msg = obj["message"] as? [String: Any],
-              let usage = msg["usage"] as? [String: Any] else { return }
+            let usage = msg["usage"] as? [String: Any]
+        else { return }
         if let m = msg["model"] as? String, !m.isEmpty, m != "<synthetic>" { model = m }
         let inp = usage["input_tokens"] as? Int ?? 0
         let cw = usage["cache_creation_input_tokens"] as? Int ?? 0
@@ -112,11 +111,15 @@ struct ClaudeTranscriptState: TranscriptParsing {
     private mutating func appendPrompt(_ raw: String, typed: Bool, ts: String) {
         if typed {
             let text = Self.unwrapped(raw)
-            buffer.append(TimelineEvent(kind: .userPrompt, title: TranscriptText.promptTitle, detail: TranscriptText.firstLine(text),
-                                        filePath: nil, timestamp: ts, fullText: text.trimmed))
+            buffer.append(
+                TimelineEvent(
+                    kind: .userPrompt, title: TranscriptText.promptTitle, detail: TranscriptText.firstLine(text),
+                    filePath: nil, timestamp: ts, fullText: text.trimmed))
         } else if let title = ClaudeInjectedMessage.title(raw) {
-            buffer.append(TimelineEvent(kind: .userPrompt, title: "Claude Code", detail: TranscriptText.firstLine(title),
-                                        filePath: nil, timestamp: ts, fullText: raw.trimmed, source: .agent))
+            buffer.append(
+                TimelineEvent(
+                    kind: .userPrompt, title: "Claude Code", detail: TranscriptText.firstLine(title),
+                    filePath: nil, timestamp: ts, fullText: raw.trimmed, source: .agent))
         }
     }
 
@@ -125,7 +128,8 @@ struct ClaudeTranscriptState: TranscriptParsing {
         // A message typed while the agent works is queued, then absorbed into the running turn:
         // it has no user line of its own, and from that moment the agent works on it.
         if obj["type"] as? String == "queue-operation", obj["operation"] as? String == "remove",
-           obj["reason"] as? String == "absorbed_mid_turn", let text = obj["content"] as? String {
+            obj["reason"] as? String == "absorbed_mid_turn", let text = obj["content"] as? String
+        {
             appendPrompt(text, typed: ClaudeInjectedMessage.title(text) == nil, ts: TranscriptText.shortTime(obj["timestamp"] as? String))
             return
         }
@@ -142,9 +146,13 @@ struct ClaudeTranscriptState: TranscriptParsing {
                 for block in arr where (block["type"] as? String) == "tool_result" {
                     guard let id = block["tool_use_id"] as? String else { continue }
                     let text: String
-                    if let s = block["content"] as? String { text = s }
-                    else if let parts = block["content"] as? [[String: Any]] { text = parts.compactMap { $0["text"] as? String }.joined(separator: "\n") }
-                    else { text = "" }
+                    if let s = block["content"] as? String {
+                        text = s
+                    } else if let parts = block["content"] as? [[String: Any]] {
+                        text = parts.compactMap { $0["text"] as? String }.joined(separator: "\n")
+                    } else {
+                        text = ""
+                    }
                     buffer.attachResult(toolUseID: id, text: text, isError: (block["is_error"] as? Bool) ?? false)
                 }
                 let texts = arr.filter { ($0["type"] as? String) == "text" }.compactMap { $0["text"] as? String }
@@ -159,8 +167,9 @@ struct ClaudeTranscriptState: TranscriptParsing {
                 let id = (msg["id"] as? String) ?? (obj["requestId"] as? String)
                 if id.map({ !billedMessageIDs.contains($0) }) ?? true {
                     if let id { billedMessageIDs.insert(id) }
-                    pendingUsage = TimelineEvent.Usage(input: u["input_tokens"] as? Int ?? 0, cacheWrite: u["cache_creation_input_tokens"] as? Int ?? 0,
-                                                       cacheRead: u["cache_read_input_tokens"] as? Int ?? 0, output: u["output_tokens"] as? Int ?? 0)
+                    pendingUsage = TimelineEvent.Usage(
+                        input: u["input_tokens"] as? Int ?? 0, cacheWrite: u["cache_creation_input_tokens"] as? Int ?? 0,
+                        cacheRead: u["cache_read_input_tokens"] as? Int ?? 0, output: u["output_tokens"] as? Int ?? 0)
                 }
             }
             func bill() -> TimelineEvent.Usage? { defer { pendingUsage = nil }; return pendingUsage }
@@ -168,18 +177,22 @@ struct ClaudeTranscriptState: TranscriptParsing {
                 switch block["type"] as? String {
                 case "text":
                     if let t = (block["text"] as? String)?.trimmed, !t.isEmpty {
-                        buffer.append(TimelineEvent(kind: .assistantText, title: "Claude", detail: TranscriptText.firstLine(t), filePath: nil, timestamp: ts,
-                                             usage: bill(), model: messageModel, fullText: t))
+                        buffer.append(
+                            TimelineEvent(
+                                kind: .assistantText, title: "Claude", detail: TranscriptText.firstLine(t), filePath: nil, timestamp: ts,
+                                usage: bill(), model: messageModel, fullText: t))
                     }
                 case "tool_use":
                     let name = block["name"] as? String ?? "tool"
                     let input = block["input"] as? [String: Any] ?? [:]
                     let (detail, path) = Self.toolDetail(input)
                     let isEdit = Self.editTools.contains(name)
-                    buffer.append(TimelineEvent(kind: isEdit ? .fileEdit : .toolUse, title: name, detail: detail, filePath: path, timestamp: ts,
-                                         anchor: isEdit ? Self.editAnchor(input) : nil,
-                                         command: isEdit ? nil : (input["command"] as? String),
-                                         usage: bill(), model: messageModel, toolUseID: block["id"] as? String))
+                    buffer.append(
+                        TimelineEvent(
+                            kind: isEdit ? .fileEdit : .toolUse, title: name, detail: detail, filePath: path, timestamp: ts,
+                            anchor: isEdit ? Self.editAnchor(input) : nil,
+                            command: isEdit ? nil : (input["command"] as? String),
+                            usage: bill(), model: messageModel, toolUseID: block["id"] as? String))
                 default: break
                 }
             }
@@ -192,14 +205,18 @@ struct ClaudeTranscriptState: TranscriptParsing {
     /// Updates the edited-files set from one line.
     private mutating func ingestSummary(_ obj: [String: Any]) {
         guard obj["type"] as? String == "assistant",
-              let msg = obj["message"] as? [String: Any],
-              let arr = msg["content"] as? [[String: Any]] else { return }
+            let msg = obj["message"] as? [String: Any],
+            let arr = msg["content"] as? [[String: Any]]
+        else { return }
         for block in arr where block["type"] as? String == "tool_use" {
             let name = block["name"] as? String ?? ""
             let input = block["input"] as? [String: Any] ?? [:]
             // NotebookEdit's parameter is notebook_path, not file_path.
             if Self.editTools.contains(name),
-               let fp = (input["file_path"] as? String) ?? (input["notebook_path"] as? String) { edited.insert(fp) }
+                let fp = (input["file_path"] as? String) ?? (input["notebook_path"] as? String)
+            {
+                edited.insert(fp)
+            }
         }
     }
 
@@ -226,7 +243,6 @@ struct ClaudeTranscriptState: TranscriptParsing {
     /// also carry a path but must NOT be classified as ``TimelineEvent/Kind/fileEdit``.
     private static let editTools: Set<String> = ["Edit", "Write", "MultiEdit", "NotebookEdit"]
 
-
     /// Derives a one-line detail string (and a navigable path, when the input
     /// carries one) from a tool call's input dictionary.
     private static func toolDetail(_ input: [String: Any]) -> (String, String?) {
@@ -247,14 +263,13 @@ struct ClaudeTranscriptState: TranscriptParsing {
         if let ns = input["new_string"] as? String {
             source = ns
         } else if let edits = input["edits"] as? [[String: Any]],
-                  let last = edits.last, let ns = last["new_string"] as? String {
+            let last = edits.last, let ns = last["new_string"] as? String
+        {
             source = ns
         } else {
             source = nil
         }
         return source.flatMap(TranscriptText.anchor)
     }
-
-
 
 }

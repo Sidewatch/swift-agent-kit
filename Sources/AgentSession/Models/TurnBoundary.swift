@@ -72,8 +72,9 @@ public struct TurnBoundary: Equatable {
         return starts.enumerated().map { position, start in
             // A turn runs to just before the next prompt, or to the end of the feed.
             let end = position + 1 < starts.count ? starts[position + 1] - 1 : events.count - 1
-            return TurnBoundary(start: start, end: end,
-                                prompt: events[start].detail, timestamp: events[start].timestamp)
+            return TurnBoundary(
+                start: start, end: end,
+                prompt: events[start].detail, timestamp: events[start].timestamp)
         }
     }
 

@@ -51,14 +51,16 @@ final class TranscriptFixtureTests: XCTestCase {
         let file = try fixture([
             #"{"type":"user","timestamp":"2026-09-20T10:00:00.000Z","message":{"content":"Wipe the users"}}"#,
             #"{"type":"assistant","timestamp":"2026-09-20T10:00:04.000Z","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"psql \"$DATABASE_URL\" <<'SQL'\nDELETE FROM users;\nSQL"}}]}}"#,
-            #"{"type":"assistant","timestamp":"2026-09-20T10:00:05.000Z","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"echo LONG"}}]}}"#.replacingOccurrences(of: "LONG", with: long),
+            #"{"type":"assistant","timestamp":"2026-09-20T10:00:05.000Z","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"echo LONG"}}]}}"#
+                .replacingOccurrences(of: "LONG", with: long),
             #"{"type":"assistant","timestamp":"2026-09-20T10:00:06.000Z","message":{"content":[{"type":"tool_use","name":"Edit","input":{"file_path":"a.sql","new_string":"DELETE FROM users;"}}]}}"#,
             #"{"type":"assistant","timestamp":"2026-09-20T10:00:07.000Z","message":{"content":[{"type":"tool_use","name":"Grep","input":{"pattern":"DELETE"}}]}}"#,
         ])
         let events = ClaudeCodeAdapter().events(fromSession: file)
         let tools = events.filter { $0.kind == .toolUse || $0.kind == .fileEdit }
         XCTAssertEqual(tools.count, 4)
-        XCTAssertEqual(tools[0].command, "psql \"$DATABASE_URL\" <<'SQL'\nDELETE FROM users;\nSQL", "the heredoc body is part of the command")
+        XCTAssertEqual(
+            tools[0].command, "psql \"$DATABASE_URL\" <<'SQL'\nDELETE FROM users;\nSQL", "the heredoc body is part of the command")
         XCTAssertEqual(tools[0].detail, "psql \"$DATABASE_URL\" <<'SQL'", "the feed's detail is still the first line")
         XCTAssertEqual(tools[1].command?.count, 5 + 300, "nothing is truncated")
         XCTAssertLessThan(tools[1].detail.count, 130, "the feed's detail is still capped")
@@ -77,7 +79,9 @@ final class TranscriptFixtureTests: XCTestCase {
         ])
         let events = ClaudeCodeAdapter().events(fromSession: file)
         XCTAssertEqual(events.count, 5)
-        XCTAssertEqual(events[1].usage, TimelineEvent.Usage(input: 1000, cacheWrite: 200, cacheRead: 300, output: 50), "the message's first event carries the bill")
+        XCTAssertEqual(
+            events[1].usage, TimelineEvent.Usage(input: 1000, cacheWrite: 200, cacheRead: 300, output: 50),
+            "the message's first event carries the bill")
         XCTAssertEqual(events[1].model, "claude-opus-5")
         XCTAssertNil(events[2].usage, "the same message's second event carries none")
         XCTAssertEqual(events[2].model, "claude-opus-5", "but still says which model")
@@ -97,7 +101,8 @@ final class TranscriptFixtureTests: XCTestCase {
         let file = try fixture([
             #"{"type":"user","timestamp":"2026-09-21T10:00:00.000Z","message":{"content":"Run the tests"}}"#,
             #"{"type":"assistant","timestamp":"2026-09-21T10:00:04.000Z","message":{"content":[{"type":"tool_use","id":"tu_a","name":"Bash","input":{"command":"swift test"}}]}}"#,
-            #"{"type":"user","timestamp":"2026-09-21T10:00:09.000Z","message":{"content":[{"type":"tool_result","tool_use_id":"tu_a","content":"LONG"}]}}"#.replacingOccurrences(of: "LONG", with: long),
+            #"{"type":"user","timestamp":"2026-09-21T10:00:09.000Z","message":{"content":[{"type":"tool_result","tool_use_id":"tu_a","content":"LONG"}]}}"#
+                .replacingOccurrences(of: "LONG", with: long),
             #"{"type":"assistant","timestamp":"2026-09-21T10:00:12.000Z","message":{"content":[{"type":"tool_use","id":"tu_b","name":"Bash","input":{"command":"npm test"}}]}}"#,
             #"{"type":"user","timestamp":"2026-09-21T10:00:20.000Z","message":{"content":[{"type":"tool_result","tool_use_id":"tu_b","is_error":true,"content":[{"type":"text","text":"Tests: 1 failed, 4 passed, 5 total"},{"type":"text","text":"exit 1"}]},{"type":"tool_result","tool_use_id":"nope","content":"lost"}]}}"#,
             #"{"type":"user","timestamp":"2026-09-21T10:05:00.000Z","message":{"content":[{"type":"text","text":"Fix it"}]}}"#,
@@ -118,8 +123,12 @@ final class TranscriptFixtureTests: XCTestCase {
         let events = ClaudeCodeAdapter().events(fromSession: file)
 
         XCTAssertEqual(events.count, 6)
-        XCTAssertEqual(events.map(\.kind), [.userPrompt, .assistantText, .toolUse, .fileEdit,
-                                            .userPrompt, .fileEdit])
+        XCTAssertEqual(
+            events.map(\.kind),
+            [
+                .userPrompt, .assistantText, .toolUse, .fileEdit,
+                .userPrompt, .fileEdit,
+            ])
         // A write tool is a fileEdit; a read tool is not — that split is what the review
         // surface keys off, so it's worth pinning.
         XCTAssertEqual(events[2].title, "Read")
@@ -130,21 +139,23 @@ final class TranscriptFixtureTests: XCTestCase {
         // Claude Code writes a plain-string prompt sometimes and a content-block array other
         // times; both must yield a userPrompt or turn segmentation silently loses a boundary.
         let events = ClaudeCodeAdapter().events(fromSession: try fixture(twoTurns))
-        XCTAssertEqual(events.filter { $0.kind == .userPrompt }.map(\.detail),
-                       ["Add a retry", "Cap it at 30s"])
+        XCTAssertEqual(
+            events.filter { $0.kind == .userPrompt }.map(\.detail),
+            ["Add a retry", "Cap it at 30s"])
     }
 
     /// Only what the person typed is theirs. A sub-agent's report, a background task's notice, a
     /// command's output and the summary a compaction leaves all arrive as user-role lines; a paste
     /// arrives wrapped in a tag and is still a prompt. Shapes from a real session.
     func testOnlyTypedMessagesArePrompts() throws {
-        let events = ClaudeCodeAdapter().events(fromSession: try fixture([
-            #"{"type":"user","origin":{"kind":"human"},"timestamp":"2026-09-27T10:00:00.000Z","message":{"content":"Tidy the models"}}"#,
-            #"{"type":"user","isMeta":true,"origin":{"kind":"peer","from":"a1"},"timestamp":"2026-09-27T10:01:00.000Z","message":{"content":[{"type":"text","text":"Another Claude session sent a message:\nDone."}]}}"#,
-            #"{"type":"user","origin":{"kind":"task-notification"},"timestamp":"2026-09-27T10:02:00.000Z","message":{"content":"<task-notification>done</task-notification>"}}"#,
-            #"{"type":"user","isCompactSummary":true,"isVisibleInTranscriptOnly":true,"timestamp":"2026-09-27T10:03:00.000Z","message":{"content":"This session is being continued from a previous conversation."}}"#,
-            #"{"type":"user","origin":{"kind":"human"},"timestamp":"2026-09-27T10:04:00.000Z","message":{"content":"<pasted_content id=\"x1\">Keep models lean</pasted_content> as above"}}"#,
-        ]))
+        let events = ClaudeCodeAdapter().events(
+            fromSession: try fixture([
+                #"{"type":"user","origin":{"kind":"human"},"timestamp":"2026-09-27T10:00:00.000Z","message":{"content":"Tidy the models"}}"#,
+                #"{"type":"user","isMeta":true,"origin":{"kind":"peer","from":"a1"},"timestamp":"2026-09-27T10:01:00.000Z","message":{"content":[{"type":"text","text":"Another Claude session sent a message:\nDone."}]}}"#,
+                #"{"type":"user","origin":{"kind":"task-notification"},"timestamp":"2026-09-27T10:02:00.000Z","message":{"content":"<task-notification>done</task-notification>"}}"#,
+                #"{"type":"user","isCompactSummary":true,"isVisibleInTranscriptOnly":true,"timestamp":"2026-09-27T10:03:00.000Z","message":{"content":"This session is being continued from a previous conversation."}}"#,
+                #"{"type":"user","origin":{"kind":"human"},"timestamp":"2026-09-27T10:04:00.000Z","message":{"content":"<pasted_content id=\"x1\">Keep models lean</pasted_content> as above"}}"#,
+            ]))
         let prompts = events.filter { $0.kind == .userPrompt }
         XCTAssertEqual(prompts.filter { $0.source == .person }.map(\.detail), ["Tidy the models", "Keep models lean as above"])
         // The background task's notice opens a turn of its own (the agent answers it), marked as
@@ -156,11 +167,12 @@ final class TranscriptFixtureTests: XCTestCase {
     /// the absorption is where it opens a turn (the enqueue alone is not: it may be delivered
     /// normally later, as its own user line).
     func testMessageAbsorbedMidTurnIsAPrompt() throws {
-        let events = ClaudeCodeAdapter().events(fromSession: try fixture([
-            #"{"type":"user","origin":{"kind":"human"},"timestamp":"2026-09-27T10:00:00.000Z","message":{"content":"Localise the app"}}"#,
-            #"{"type":"queue-operation","operation":"enqueue","timestamp":"2026-09-27T10:05:00.000Z","content":"[Image #4] the pill does nothing"}"#,
-            #"{"type":"queue-operation","operation":"remove","reason":"absorbed_mid_turn","timestamp":"2026-09-27T10:05:20.000Z","content":"[Image #4] the pill does nothing"}"#,
-        ]))
+        let events = ClaudeCodeAdapter().events(
+            fromSession: try fixture([
+                #"{"type":"user","origin":{"kind":"human"},"timestamp":"2026-09-27T10:00:00.000Z","message":{"content":"Localise the app"}}"#,
+                #"{"type":"queue-operation","operation":"enqueue","timestamp":"2026-09-27T10:05:00.000Z","content":"[Image #4] the pill does nothing"}"#,
+                #"{"type":"queue-operation","operation":"remove","reason":"absorbed_mid_turn","timestamp":"2026-09-27T10:05:20.000Z","content":"[Image #4] the pill does nothing"}"#,
+            ]))
         XCTAssertEqual(events.filter { $0.kind == .userPrompt }.map(\.detail), ["Localise the app", "the pill does nothing"])
     }
 
@@ -170,22 +182,27 @@ final class TranscriptFixtureTests: XCTestCase {
         let body = String(repeating: "x", count: 5_000) + "\nExecuted 3 tests"
         var lines = [#"{"type":"user","origin":{"kind":"human"},"timestamp":"2026-09-27T10:00:00.000Z","message":{"content":"Run it"}}"#]
         for i in 0..<400 {
-            lines.append(#"{"type":"assistant","timestamp":"2026-09-27T10:00:01.000Z","message":{"content":[{"type":"tool_use","id":"t\#(i)","name":"Bash","input":{"command":"swift test"}}]}}"#)
-            lines.append(#"{"type":"user","timestamp":"2026-09-27T10:00:02.000Z","message":{"content":[{"type":"tool_result","tool_use_id":"t\#(i)","content":"BODY"}]}}"#.replacingOccurrences(of: "BODY", with: body.replacingOccurrences(of: "\n", with: "\\n")))
+            lines.append(
+                #"{"type":"assistant","timestamp":"2026-09-27T10:00:01.000Z","message":{"content":[{"type":"tool_use","id":"t\#(i)","name":"Bash","input":{"command":"swift test"}}]}}"#
+            )
+            lines.append(
+                #"{"type":"user","timestamp":"2026-09-27T10:00:02.000Z","message":{"content":[{"type":"tool_result","tool_use_id":"t\#(i)","content":"BODY"}]}}"#
+                    .replacingOccurrences(of: "BODY", with: body.replacingOccurrences(of: "\n", with: "\\n")))
         }
         let tools = ClaudeCodeAdapter().events(fromSession: try fixture(lines)).filter { $0.kind == .toolUse }
         XCTAssertEqual(tools.count, 400, "every event of a long prompt is kept")
         XCTAssertLessThanOrEqual(tools[0].result?.count ?? .max, EventBuffer.olderResultCap + 1, "an old event's output is trimmed")
         XCTAssertTrue(tools[0].result?.hasSuffix("Executed 3 tests") == true, "…to its end, where the summary is")
-        XCTAssertTrue(tools[399].result?.hasSuffix("Executed 3 tests") == true && (tools[399].result?.count ?? 0) > 5_000, "a recent one is whole")
+        XCTAssertTrue(
+            tools[399].result?.hasSuffix("Executed 3 tests") == true && (tools[399].result?.count ?? 0) > 5_000, "a recent one is whole")
     }
 
     func testMalformedLinesAreSkippedNotFatal() throws {
         var lines = twoTurns
         lines.insert("not json at all", at: 2)
-        lines.insert(#"{"type":"assistant"}"#, at: 4)     // no message
+        lines.insert(#"{"type":"assistant"}"#, at: 4)  // no message
         let events = ClaudeCodeAdapter().events(fromSession: try fixture(lines))
-        XCTAssertEqual(events.count, 6)                    // exactly the well-formed ones
+        XCTAssertEqual(events.count, 6)  // exactly the well-formed ones
     }
 
     func testTurnsSegmentFromAParsedFixture() throws {

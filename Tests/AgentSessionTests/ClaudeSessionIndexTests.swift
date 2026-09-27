@@ -42,7 +42,9 @@ final class ClaudeSessionIndexTests: XCTestCase {
         XCTAssertEqual(index.projectDirectory(forSession: "sess-1"), "-Users-x-dev-app")
         XCTAssertTrue(index.directory(URL(fileURLWithPath: "/Users/x/dev/app"), matchesSession: "sess-1"))
         XCTAssertFalse(index.directory(URL(fileURLWithPath: "/Users/x/dev/other"), matchesSession: "sess-1"))
-        XCTAssertNil(index.projectDirectory(forSession: "00000000-dead-beef-0000-000000000000"), "an unknown session resolves to nothing, never something arbitrary")
+        XCTAssertNil(
+            index.projectDirectory(forSession: "00000000-dead-beef-0000-000000000000"),
+            "an unknown session resolves to nothing, never something arbitrary")
         try FileManager.default.removeItem(at: proj)
         XCTAssertEqual(index.projectDirectory(forSession: "sess-1"), "-Users-x-dev-app", "cached: sessions do not move")
         index.resetCache()
@@ -53,7 +55,8 @@ final class ClaudeSessionIndexTests: XCTestCase {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("projects-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: root) }
         let cwd = URL(fileURLWithPath: "/Users/x/T\u{EB}st 2.0")
-        try FileManager.default.createDirectory(at: root.appendingPathComponent(ClaudeSessionIndex.encode(cwd)), withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(
+            at: root.appendingPathComponent(ClaudeSessionIndex.encode(cwd)), withIntermediateDirectories: true)
         XCTAssertNotNil(ClaudeCodeAdapter(projectsRoot: root).projectDir(for: cwd), "one fold for the package, not two")
     }
 }

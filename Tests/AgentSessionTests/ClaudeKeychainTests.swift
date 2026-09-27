@@ -23,7 +23,9 @@ final class ClaudeKeychainTests: XCTestCase {
     func testNothingOrNoiseIsNoToken() {
         XCTAssertNil(ClaudeKeychain.token(fromToolOutput: Data()))
         XCTAssertNil(ClaudeKeychain.token(fromToolOutput: Data("\n".utf8)))
-        XCTAssertNil(ClaudeKeychain.token(fromToolOutput: Data("security: SecKeychainSearchCopyNext: The specified item could not be found in the keychain.\n".utf8)))
+        XCTAssertNil(
+            ClaudeKeychain.token(
+                fromToolOutput: Data("security: SecKeychainSearchCopyNext: The specified item could not be found in the keychain.\n".utf8)))
     }
 
     func testAMissingServiceReadsAsNilWithoutHanging() {

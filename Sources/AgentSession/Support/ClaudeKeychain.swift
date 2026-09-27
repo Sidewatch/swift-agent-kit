@@ -35,8 +35,9 @@ public enum ClaudeKeychain {
     /// not answered within five seconds (it is killed then, so a dialog it might raise for an
     /// item in some other partition cannot hang the caller). Off-main.
     public static func accessTokenViaSecurityTool(service: String = service) -> String? {
-        let result = ProcessRunner.run("/usr/bin/security", ["find-generic-password", "-s", service, "-w"],
-                                       augmentPATH: false, timeout: 5)
+        let result = ProcessRunner.run(
+            "/usr/bin/security", ["find-generic-password", "-s", service, "-w"],
+            augmentPATH: false, timeout: 5)
         guard result.succeeded else { return nil }
         return token(fromToolOutput: result.stdout)
     }
@@ -45,7 +46,8 @@ public enum ClaudeKeychain {
     /// (or, in other setups, a bare token), which ``ClaudeCredentials`` reads.
     static func token(fromToolOutput data: Data) -> String? {
         guard let text = data.utf8String?.trimmed,
-              !text.isEmpty else { return nil }
+            !text.isEmpty
+        else { return nil }
         return ClaudeCredentials.accessToken(fromKeychainData: Data(text.utf8))
     }
 

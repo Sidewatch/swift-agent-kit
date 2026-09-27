@@ -67,17 +67,21 @@ struct CodexTranscriptState: TranscriptParsing {
         case "message":
             ingestMessage(item, ts: ts)
         case "function_call":
-            ingestToolCall(name: item["name"] as? String ?? "tool", arguments: item["arguments"] as? String,
-                           callID: item["call_id"] as? String, ts: ts)
+            ingestToolCall(
+                name: item["name"] as? String ?? "tool", arguments: item["arguments"] as? String,
+                callID: item["call_id"] as? String, ts: ts)
         case "custom_tool_call":
-            ingestToolCall(name: item["name"] as? String ?? "tool", arguments: item["input"] as? String,
-                           callID: item["call_id"] as? String, ts: ts)
+            ingestToolCall(
+                name: item["name"] as? String ?? "tool", arguments: item["input"] as? String,
+                callID: item["call_id"] as? String, ts: ts)
         case "local_shell_call":
             let action = item["action"] as? [String: Any]
             let command = Self.shellCommand(action?["command"])
-            buffer.append(TimelineEvent(kind: .toolUse, title: "shell", detail: TranscriptText.firstLine(command ?? "", 120),
-                                        filePath: nil, timestamp: ts, command: command, model: model,
-                                        toolUseID: (item["call_id"] as? String) ?? (item["id"] as? String)))
+            buffer.append(
+                TimelineEvent(
+                    kind: .toolUse, title: "shell", detail: TranscriptText.firstLine(command ?? "", 120),
+                    filePath: nil, timestamp: ts, command: command, model: model,
+                    toolUseID: (item["call_id"] as? String) ?? (item["id"] as? String)))
         case "function_call_output", "custom_tool_call_output":
             guard let id = item["call_id"] as? String else { return }
             let (text, failed) = Self.outputText(item["output"])
@@ -95,14 +99,19 @@ struct CodexTranscriptState: TranscriptParsing {
         case "user":
             guard Self.isTypedByPerson(item, content: content), let text = texts.first(where: { !$0.trimmed.isEmpty }) else { return }
             let detail = TranscriptText.firstLine(text)
-            buffer.append(TimelineEvent(kind: .userPrompt, title: TranscriptText.promptTitle, detail: detail, filePath: nil, timestamp: ts, fullText: text.trimmed))
+            buffer.append(
+                TimelineEvent(
+                    kind: .userPrompt, title: TranscriptText.promptTitle, detail: detail, filePath: nil, timestamp: ts,
+                    fullText: text.trimmed))
         case "assistant":
             let text = texts.joined(separator: "\n").trimmed
             guard !text.isEmpty else { return }
-            buffer.append(TimelineEvent(kind: .assistantText, title: "Codex", detail: TranscriptText.firstLine(text),
-                                        filePath: nil, timestamp: ts, model: model, fullText: text))
+            buffer.append(
+                TimelineEvent(
+                    kind: .assistantText, title: "Codex", detail: TranscriptText.firstLine(text),
+                    filePath: nil, timestamp: ts, model: model, fullText: text))
         default:
-            break   // developer / system instructions are not part of the conversation
+            break  // developer / system instructions are not part of the conversation
         }
     }
 
@@ -115,15 +124,19 @@ struct CodexTranscriptState: TranscriptParsing {
             for path in ApplyPatch.paths(patch) {
                 let absolute = path.hasPrefix("/") ? path : ((cwd ?? "") as NSString).appendingPathComponent(path)
                 edited.insert(absolute)
-                buffer.append(TimelineEvent(kind: .fileEdit, title: name, detail: TranscriptText.shortPath(absolute), filePath: absolute,
-                                            timestamp: ts, model: model, toolUseID: callID))
+                buffer.append(
+                    TimelineEvent(
+                        kind: .fileEdit, title: name, detail: TranscriptText.shortPath(absolute), filePath: absolute,
+                        timestamp: ts, model: model, toolUseID: callID))
             }
             return
         }
         let command = Self.shellCommand(args?["cmd"] ?? args?["command"])
         let detail = command.map { TranscriptText.firstLine($0, 120) } ?? TranscriptText.firstLine(arguments ?? "", 120)
-        buffer.append(TimelineEvent(kind: .toolUse, title: name, detail: detail, filePath: nil, timestamp: ts,
-                                    command: command, model: model, toolUseID: callID))
+        buffer.append(
+            TimelineEvent(
+                kind: .toolUse, title: name, detail: detail, filePath: nil, timestamp: ts,
+                command: command, model: model, toolUseID: callID))
     }
 
     /// A `token_count`: the session's cumulative totals, and this call's usage billed to the
@@ -134,8 +147,10 @@ struct CodexTranscriptState: TranscriptParsing {
         if let window = info["model_context_window"] as? Int { contextWindow = window }
         if let last = info["last_token_usage"] as? [String: Any] {
             let call = TokenCounts(last)
-            buffer.billLatest(TimelineEvent.Usage(input: max(0, call.input - call.cached), cacheWrite: 0,
-                                                  cacheRead: call.cached, output: call.output), model: model)
+            buffer.billLatest(
+                TimelineEvent.Usage(
+                    input: max(0, call.input - call.cached), cacheWrite: 0,
+                    cacheRead: call.cached, output: call.output), model: model)
             lastCallContext = call.input + call.output
         }
     }
@@ -149,10 +164,12 @@ struct CodexTranscriptState: TranscriptParsing {
     /// it is zero (and not shown) rather than a guess.
     var usageResult: AgentUsage? {
         guard let totals else { return nil }
-        let cost = ModelPricing.cost(model: model ?? "", input: max(0, totals.input - totals.cached), cacheWrite: 0,
-                                     cacheRead: totals.cached, output: totals.output)
-        return AgentUsage(contextTokens: lastCallContext, contextLimit: contextWindow ?? 272_000,
-                          outputTokens: totals.output, costUSD: cost)
+        let cost = ModelPricing.cost(
+            model: model ?? "", input: max(0, totals.input - totals.cached), cacheWrite: 0,
+            cacheRead: totals.cached, output: totals.output)
+        return AgentUsage(
+            contextTokens: lastCallContext, contextLimit: contextWindow ?? 272_000,
+            outputTokens: totals.output, costUSD: cost)
     }
 
     var eventsResult: [TimelineEvent] { buffer.events }

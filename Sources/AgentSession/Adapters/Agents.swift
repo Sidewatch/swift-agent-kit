@@ -71,7 +71,9 @@ public enum Agents {
     }
 
     /// Test seam for ``resolve(candidates:preferring:)`` over an explicit adapter list.
-    static func resolve(candidates: [URL], preferring agent: String? = nil, in adapters: [AgentAdapter]) -> (adapter: AgentAdapter, root: URL)? {
+    static func resolve(candidates: [URL], preferring agent: String? = nil, in adapters: [AgentAdapter]) -> (
+        adapter: AgentAdapter, root: URL
+    )? {
         for root in candidates {
             if let agent, let preferred = adapters.first(where: { $0.name == agent }), preferred.hasSession(for: root) {
                 return (preferred, root)

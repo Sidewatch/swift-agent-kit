@@ -28,7 +28,9 @@ final class ClaudeQuotaCacheTests: XCTestCase {
         let e = expectation(description: "delivered")
         final class Box: @unchecked Sendable { var got: ClaudeQuota? }
         let box = Box()
-        cache.quota(force: force, token: { token }) { box.got = $0; e.fulfill() }
+        cache.quota(force: force, token: { token }) {
+            box.got = $0; e.fulfill()
+        }
         wait(for: [e], timeout: 5)
         return box.got
     }
@@ -47,7 +49,9 @@ final class ClaudeQuotaCacheTests: XCTestCase {
         let first = ask(cache); XCTAssertNotNil(first)
         let second = ask(cache); XCTAssertEqual(calls.value, 2)
         XCTAssertEqual(second?.fiveHour?.utilization, first?.fiveHour?.utilization, "a failed refresh keeps the last good value")
-        let untokened = ClaudeQuotaCache(minRefreshInterval: 0) { _ in XCTFail("must not fetch without a token"); return nil }
+        let untokened = ClaudeQuotaCache(minRefreshInterval: 0) { _ in
+            XCTFail("must not fetch without a token"); return nil
+        }
         XCTAssertNil(ask(untokened, token: nil))
     }
 }

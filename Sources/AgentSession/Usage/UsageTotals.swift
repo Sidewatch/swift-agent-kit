@@ -28,13 +28,14 @@ struct UsageTotals {
     mutating func add(_ r: UsageRecord, project: String, file: URL) {
         if let id = r.id, !seenIDs.insert(id).inserted { return }
         cost += r.cost; input += r.input; cacheWrite += r.cacheWrite; cacheRead += r.cacheRead; output += r.output; messages += 1
-        byModel[UsageAggregator.displayModel(r.model), default: .init()].add(cost: r.cost, i: r.input, o: r.output, cr: r.cacheRead, cw: r.cacheWrite)
+        byModel[UsageAggregator.displayModel(r.model), default: .init()].add(
+            cost: r.cost, i: r.input, o: r.output, cr: r.cacheRead, cw: r.cacheWrite)
         byProject[project, default: .init()].add(cost: r.cost, i: r.input, o: r.output, cr: r.cacheRead, cw: r.cacheWrite)
         if let t = r.instant {
             let span = sessionSpans[file.path] ?? (t, t)
             sessionSpans[file.path] = (min(span.first, t), max(span.last, t))
         } else if sessionSpans[file.path] == nil {
-            sessionSpans[file.path] = (.distantFuture, .distantPast)   // counted as a session, no span
+            sessionSpans[file.path] = (.distantFuture, .distantPast)  // counted as a session, no span
         }
         if !r.day.isEmpty {
             dailyCost[r.day, default: 0] += r.cost

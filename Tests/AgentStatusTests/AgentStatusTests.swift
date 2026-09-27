@@ -37,31 +37,53 @@ final class AgentStatusTests: XCTestCase {
 
     func testScreenStateFallbackReadsPromptsAndWorkingMarkers() {
         let screens: [(String, [String], ScreenState?)] = [
-            ("claude permission dialog", ["Do you want to make this edit to main.swift?", "❯ 1. Yes", "  2. Yes, and don't ask again this session", "  3. No"], .waitingForInput),
+            (
+                "claude permission dialog",
+                ["Do you want to make this edit to main.swift?", "❯ 1. Yes", "  2. Yes, and don't ask again this session", "  3. No"],
+                .waitingForInput
+            ),
             ("claude working", ["✻ Baking… (esc to interrupt)", "", "> "], .working),
-            ("gemini allow prompt", ["Allow execution of 'rm -rf build'?", "● 1. Yes, allow once", "  2. Yes, allow always", "  3. No (esc)"], .waitingForInput),
+            (
+                "gemini allow prompt",
+                ["Allow execution of 'rm -rf build'?", "● 1. Yes, allow once", "  2. Yes, allow always", "  3. No (esc)"], .waitingForInput
+            ),
             ("codex y/n", ["Run `npm test`? [y/N]"], .waitingForInput),
             ("plain shell prompt", ["user@mac proj % "], nil),
             ("agent output, nothing asked", ["Found 3 TODO comments in src/:", "- src/main.py:7 — read config_path from argv"], nil),
             ("numbered list without cursor is not a prompt", ["1. Initial commit", "2. Added parser"], nil),
             ("empty screen", ["", "", ""], nil),
             // Claude Code 2.1.2xx shapes, checked against real screens.
-            ("mcp elicitation", ["MCP server \"github\" requests your input", "  Repository name: ", "  ❯ Accept   Decline"], .waitingForInput),
-            ("dynamic workflow confirmation", ["Run a dynamic workflow?", "  This will start 6 agents.", "  ❯ 1. Yes", "    2. No"], .waitingForInput),
-            ("plan approval footer", ["Ready to code?", "  Here is the plan…", "  ↑/↓ to navigate · enter to confirm · esc to cancel"], .waitingForInput),
+            (
+                "mcp elicitation", ["MCP server \"github\" requests your input", "  Repository name: ", "  ❯ Accept   Decline"],
+                .waitingForInput
+            ),
+            (
+                "dynamic workflow confirmation", ["Run a dynamic workflow?", "  This will start 6 agents.", "  ❯ 1. Yes", "    2. No"],
+                .waitingForInput
+            ),
+            (
+                "plan approval footer", ["Ready to code?", "  Here is the plan…", "  ↑/↓ to navigate · enter to confirm · esc to cancel"],
+                .waitingForInput
+            ),
             ("esc to cancel alone is still working", ["✻ Thinking… (esc to cancel)", "", "> "], .working),
         ]
         for (label, rows, want) in screens { XCTAssertEqual(ScreenStateClassifier.classify(rows), want, label) }
-        XCTAssertEqual(ScreenStateClassifier.promptLine(["Do you want to make this edit to main.swift?", "❯ 1. Yes", "  2. No"]), "Do you want to make this edit to main.swift?", "the question above the cursor, not the cursor's line")
+        XCTAssertEqual(
+            ScreenStateClassifier.promptLine(["Do you want to make this edit to main.swift?", "❯ 1. Yes", "  2. No"]),
+            "Do you want to make this edit to main.swift?", "the question above the cursor, not the cursor's line")
         XCTAssertEqual(ScreenStateClassifier.promptLine(["Run `npm test`? [y/N]"]), "Run `npm test`? [y/N]")
-        XCTAssertEqual(ScreenStateClassifier.promptLine(["Ready to code?", "  ↑/↓ to navigate · enter to confirm · esc to cancel"]), "Ready to code?")
+        XCTAssertEqual(
+            ScreenStateClassifier.promptLine(["Ready to code?", "  ↑/↓ to navigate · enter to confirm · esc to cancel"]), "Ready to code?")
         XCTAssertNil(ScreenStateClassifier.promptLine(["✻ Baking… (esc to interrupt)"]))
     }
 
     func testAttentionNoticeFiresOnlyForWhatThePersonCannotSee() {
         XCTAssertTrue(AttentionNotice.shouldNotify(enabled: true, appActive: false, paneVisible: true), "app in the background")
-        XCTAssertTrue(AttentionNotice.shouldNotify(enabled: true, appActive: true, paneVisible: false), "pane hidden behind another tab or a collapsed panel")
-        XCTAssertFalse(AttentionNotice.shouldNotify(enabled: true, appActive: true, paneVisible: true), "the pane in front: the badge is enough")
+        XCTAssertTrue(
+            AttentionNotice.shouldNotify(enabled: true, appActive: true, paneVisible: false),
+            "pane hidden behind another tab or a collapsed panel")
+        XCTAssertFalse(
+            AttentionNotice.shouldNotify(enabled: true, appActive: true, paneVisible: true), "the pane in front: the badge is enough")
         XCTAssertFalse(AttentionNotice.shouldNotify(enabled: false, appActive: false, paneVisible: false), "off is off")
         let needs = AttentionNotice.needsYou(prompt: "Do you want to proceed?").text(agent: "Claude")
         XCTAssertEqual(needs.title, "Claude needs you"); XCTAssertEqual(needs.body, "Do you want to proceed?")
@@ -70,8 +92,9 @@ final class AgentStatusTests: XCTestCase {
     }
 
     private func status(_ busy: Bool, _ process: String?, _ path: String?, _ args: String?, unseen: Bool) -> TerminalStatus {
-        TerminalStatus.derive(foreground: ForegroundInfo(isBusy: busy, process: process, processPath: path, processArgs: args),
-                              unseenCompletion: unseen, attention: nil)
+        TerminalStatus.derive(
+            foreground: ForegroundInfo(isBusy: busy, process: process, processPath: path, processArgs: args),
+            unseenCompletion: unseen, attention: nil)
     }
 
     func testDerivationCoversTheThreeInstallShapesAndTheFalsePositives() {
@@ -80,10 +103,16 @@ final class AgentStatusTests: XCTestCase {
         XCTAssertEqual(status(true, "cargo", nil, nil, unseen: false), .running)
         XCTAssertEqual(status(false, nil, nil, nil, unseen: true), .finished)
         XCTAssertEqual(status(true, "claude", nil, nil, unseen: true), .agent, "busy outranks a pending notice")
-        XCTAssertEqual(status(true, "2.1.223", "/Users/x/.local/share/claude/versions/2.1.223", nil, unseen: false), .agent, "native: the binary is a version number; the PATH says claude")
-        XCTAssertEqual(status(true, "node", "/usr/local/bin/node", "node /usr/local/lib/node_modules/@openai/codex/bin/codex.js", unseen: false), .agent, "npm: only the ARGS say codex")
-        XCTAssertEqual(status(true, "python3", "/opt/homebrew/bin/python3", "python3 /opt/homebrew/bin/aider --model gpt-4", unseen: false), .agent)
-        XCTAssertEqual(status(true, "vim", "/Users/x/claude-notes/bin/vim", nil, unseen: false), .running, "a project merely named claude-notes")
+        XCTAssertEqual(
+            status(true, "2.1.223", "/Users/x/.local/share/claude/versions/2.1.223", nil, unseen: false), .agent,
+            "native: the binary is a version number; the PATH says claude")
+        XCTAssertEqual(
+            status(true, "node", "/usr/local/bin/node", "node /usr/local/lib/node_modules/@openai/codex/bin/codex.js", unseen: false),
+            .agent, "npm: only the ARGS say codex")
+        XCTAssertEqual(
+            status(true, "python3", "/opt/homebrew/bin/python3", "python3 /opt/homebrew/bin/aider --model gpt-4", unseen: false), .agent)
+        XCTAssertEqual(
+            status(true, "vim", "/Users/x/claude-notes/bin/vim", nil, unseen: false), .running, "a project merely named claude-notes")
         XCTAssertEqual(status(true, "node", "/usr/local/bin/node", "node server.js", unseen: false), .running)
         XCTAssertEqual(status(true, "python3", "/opt/homebrew/bin/python3", "python3 manage.py", unseen: false), .running)
     }
@@ -92,7 +121,9 @@ final class AgentStatusTests: XCTestCase {
         let running = ForegroundInfo(isBusy: true, process: "claude", processPath: nil, processArgs: nil)
         XCTAssertEqual(TerminalStatus.derive(foreground: running, unseenCompletion: false, attention: .waiting), .waiting)
         XCTAssertEqual(TerminalStatus.derive(foreground: running, unseenCompletion: false, attention: nil), .agent)
-        XCTAssertEqual([TerminalStatus.idle, .running, .agent, .finished, .waiting].sorted { $0.priority < $1.priority }, [.waiting, .finished, .agent, .running, .idle])
+        XCTAssertEqual(
+            [TerminalStatus.idle, .running, .agent, .finished, .waiting].sorted { $0.priority < $1.priority },
+            [.waiting, .finished, .agent, .running, .idle])
         XCTAssertEqual([TerminalStatus.idle, .running, .agent, .finished, .waiting].filter(\.isActionable), [.finished, .waiting])
         XCTAssertEqual([TerminalStatus.idle, .running, .agent, .finished, .waiting].filter(\.impliesAgent), [.agent, .finished, .waiting])
     }
@@ -153,13 +184,19 @@ final class AgentStatusTests: XCTestCase {
     /// The gap this closed: the ARGUMENTS tier never consulted the exact names, so an agent
     /// installed under a runtime was invisible to all three tiers.
     func testAnExactlyNamedAgentUnderARuntimeIsSeenThroughItsArguments() {
-        XCTAssertTrue(TerminalStatus.isAgentProcess("node", path: "/usr/local/bin/node",
-                                                    args: "node /opt/pi/cli.js --resume"))
-        XCTAssertTrue(TerminalStatus.isAgentProcess("node", path: "/usr/local/bin/node",
-                                                    args: "node /opt/ori/index.js"))
-        XCTAssertFalse(TerminalStatus.isAgentProcess("node", path: "/usr/local/bin/node",
-                                                     args: "node /srv/origin/server.js"),
-                       "a path merely containing the word is not a token match")
+        XCTAssertTrue(
+            TerminalStatus.isAgentProcess(
+                "node", path: "/usr/local/bin/node",
+                args: "node /opt/pi/cli.js --resume"))
+        XCTAssertTrue(
+            TerminalStatus.isAgentProcess(
+                "node", path: "/usr/local/bin/node",
+                args: "node /opt/ori/index.js"))
+        XCTAssertFalse(
+            TerminalStatus.isAgentProcess(
+                "node", path: "/usr/local/bin/node",
+                args: "node /srv/origin/server.js"),
+            "a path merely containing the word is not a token match")
     }
 
     func testTheNewNamesAreSeenInAPathComponentToo() {
@@ -173,10 +210,12 @@ final class AgentStatusTests: XCTestCase {
         XCTAssertEqual(TerminalStatus.agentName("codex"), "codex")
         XCTAssertEqual(TerminalStatus.agentName("claude-code"), "claude", "a suffixed binary is its agent")
         XCTAssertEqual(TerminalStatus.agentName("node", args: "node /usr/lib/node_modules/@openai/codex/bin/codex.js"), "codex")
-        XCTAssertEqual(TerminalStatus.agentName("node", args: "node /opt/homebrew/lib/node_modules/@google/gemini-cli/dist/index.js"), "gemini")
+        XCTAssertEqual(
+            TerminalStatus.agentName("node", args: "node /opt/homebrew/lib/node_modules/@google/gemini-cli/dist/index.js"), "gemini")
         XCTAssertEqual(TerminalStatus.agentName("2.1.223", path: "/Users/me/.local/share/claude/versions/2.1.223"), "claude")
         XCTAssertEqual(TerminalStatus.agentName("node", args: "node ~/.npm/pi/cli.js"), "pi")
         XCTAssertNil(TerminalStatus.agentName("zsh"))
-        XCTAssertNil(TerminalStatus.agentName("vim", path: "/Users/me/claude-notes/vim"), "a folder starting with an agent's name is not one")
+        XCTAssertNil(
+            TerminalStatus.agentName("vim", path: "/Users/me/claude-notes/vim"), "a folder starting with an agent's name is not one")
     }
 }
