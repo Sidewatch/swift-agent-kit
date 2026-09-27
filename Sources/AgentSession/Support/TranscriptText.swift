@@ -21,6 +21,19 @@ enum TranscriptText {
         return t.count > max ? String(t.prefix(max)) + "…" : t
     }
 
+    /// The first line of inserted text long enough to be findable (skipping braces and blanks),
+    /// to locate where an edit landed; nil when there is none.
+    static func anchor(_ inserted: String) -> String? {
+        // `isNewline`, never the Character "\n": a CRLF file keeps its endings in the inserted
+        // text, and "\r\n" is ONE Character in Swift, so a "\n" split never divides it and the
+        // anchor would be the whole text, which no single line can contain.
+        for raw in inserted.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline) {
+            let t = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            if t.count >= 4 { return String(t.prefix(200)) }
+        }
+        return nil
+    }
+
     /// An absolute path as its last two components (`.../Dir/File.swift`).
     static func shortPath(_ p: String) -> String {
         let tail = p.pathTail()

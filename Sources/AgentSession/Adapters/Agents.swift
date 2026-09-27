@@ -24,6 +24,7 @@ public enum Agents {
     public static let all: [AgentAdapter] = [
         ClaudeCodeAdapter(),
         CodexAdapter(),
+        GeminiAdapter(),
     ]
 
     /// The adapter with this ``AgentAdapter/name``, if the library has one.

@@ -233,7 +233,6 @@ struct ClaudeTranscriptState: TranscriptParsing {
     /// A distinctive line of the text an edit inserts, to locate where the edit landed.
     /// `Edit` → its `new_string`; `MultiEdit` → the *last* sub-edit's `new_string` (where
     /// the agent finished); `Write`/`NotebookEdit` → nil (whole-file, no single anchor).
-    /// Returns the first inserted line long enough to be findable (skips braces/blanks).
     private static func editAnchor(_ input: [String: Any]) -> String? {
         let source: String?
         if let ns = input["new_string"] as? String {
@@ -244,15 +243,7 @@ struct ClaudeTranscriptState: TranscriptParsing {
         } else {
             source = nil
         }
-        guard let text = source else { return nil }
-        // `isNewline`, never the Character "\n": a CRLF file keeps its endings in `new_string`,
-        // and "\r\n" is ONE Character in Swift, so a "\n" split never divides it and the anchor
-        // would be the whole inserted text, which no single line can contain.
-        for raw in text.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline) {
-            let t = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-            if t.count >= 4 { return String(t.prefix(200)) }
-        }
-        return nil
+        return source.flatMap(TranscriptText.anchor)
     }
 
 

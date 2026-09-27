@@ -45,7 +45,7 @@ public struct TimelineEvent: Equatable, Sendable {
     public let detail: String
 
     /// The file this entry touched, if any (for `.fileEdit` and path tools).
-    public let filePath: String?
+    public internal(set) var filePath: String?
 
     /// A short `HH:MM` timestamp, or `""` when unknown.
     public let timestamp: String

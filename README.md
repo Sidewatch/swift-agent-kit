@@ -7,14 +7,13 @@ A tiny, dependency-free reader for terminal AI coding-agent session transcripts.
 - 🧭 **Agent-agnostic model** — `TimelineEvent`, `AgentUsage`, `AgentSummary`
 - 🔌 **Adapter protocol** — implement `AgentAdapter` once per agent
 - 📐 **Turn boundaries** — `TurnBoundary` splits the flat timeline into agent turns (one user prompt to just before the next), with a content-derived stable id so a checkpoint can be pinned to a turn
-- 🤖 **Claude Code adapter** — `ClaudeCodeAdapter` parses `~/.claude/projects/…/*.jsonl` transcripts. **The only adapter shipped**, deliberately: an adapter tested only against fixtures written by hand from a tool's published schema reports "no session" forever without telling anyone when the format drifts. Add one only with fixtures captured from a REAL run.
+- 🤖 **Three agents** — `ClaudeCodeAdapter` (`~/.claude/projects/…/*.jsonl`), `CodexAdapter` (`~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`) and `GeminiAdapter` (`~/.gemini/tmp/<project>/chats/session-*.jsonl`). Each is tested against sanitized transcripts from REAL runs and its rules checked against the agent's own source (`Tests/Fixtures/NOTICE.md` says which). An adapter written from a published schema alone reports "no session" forever when the format drifts, and tells no one, so none is added without both.
 - 🕘 **Activity timeline** — prompts, assistant prose, tool calls, and file edits, with local-clock `HH:MM` timestamps
 - 💰 **Telemetry** — context fill % (`AgentUsage.contextPercent`), output tokens, and estimated USD cost, deduplicated per API response
-- ✅ **Edited files** — the files a session wrote (Edit / Write / MultiEdit / NotebookEdit).
-- 🔎 **Auto-detection** — `Agents.active(for:)` picks the agent that owns a project
+- ✅ **Edited files** — the files a session wrote; `Agents.editedFiles(for:)` unions every agent's in a folder.
+- 🔎 **Several agents at once** — `Agents.resolve(candidates:preferring:)` reads the agent named (the one in the terminal in use) when it has a session there, else the most recently active; `Agents.adapter(forProcess:)` maps a terminal's process name to its reader.
 - 🧪 **Fully tested** — synthetic-transcript tests including malformed, truncated, and garbage input
-- 🪶 **Zero dependencies** — Foundation only
-- 🍎 **Cross-platform** — iOS, macOS, tvOS, watchOS, visionOS
+- 🪶 **Small** — Foundation plus two family packages (swift-foundation-extensions, swift-process-runner)
 
 ## Requirements
 
@@ -38,11 +37,13 @@ import AgentSession
 
 let root = URL(fileURLWithPath: "/path/to/project")
 
-// Which agent has a session here? First match in Agents.all wins.
-if let agent = Agents.active(for: root) {
+// Which agent has a session here? The most recently active one; name an agent to prefer it
+// (the one running in the terminal the person is using — "codex" from a process name).
+let preferred = Agents.adapter(forProcess: "codex")?.name
+if let (agent, root) = Agents.resolve(candidates: [root], preferring: preferred) {
     print(agent.name)   // e.g. Claude Code
 
-    // The activity timeline, oldest first (most recent 300 events).
+    // The activity timeline, oldest first (the most recent 2,000 events).
     for event in agent.events(for: root) {
         print("\(event.timestamp)  \(event.title): \(event.detail)")
         // event.kind: .userPrompt / .assistantText / .toolUse / .fileEdit
@@ -74,19 +75,23 @@ if let agent = Agents.active(for: root) {
 // Implement the protocol against the agent's native transcript format…
 struct MyAgentAdapter: AgentAdapter {
     var name: String { "My Agent" }
-    func hasSession(for root: URL) -> Bool { /* … */ }
+    var processNames: Set<String> { ["myagent"] }
+    func latestSession(for root: URL) -> URL? { /* … */ }
     func events(for root: URL) -> [TimelineEvent] { /* … */ }
+    func events(fromSession url: URL) -> [TimelineEvent] { /* … */ }
     func usage(for root: URL) -> AgentUsage? { /* … */ }
     func summary(for root: URL) -> AgentSummary? { /* … */ }
 }
-// …and append it to Agents.all — every consumer stays agent-agnostic.
+// …and append it to Agents.all — every consumer stays agent-agnostic. A line-based format can
+// reuse TranscriptCache: conform a parse state to TranscriptParsing and polls cost only the
+// bytes appended since the last one.
 ```
 
 ## Notes
 
 - All calls are **synchronous** file reads over the newest transcript. When sessions may be large, dispatch them off the main queue.
-- Only the **latest session** (most recently modified `.jsonl`) per project is read.
-- Costs are **estimates** at Anthropic's published API list prices per model generation (`ModelPricing` cites the page): Fable 5.1 and 5, Opus 4.5 and later against 4.1 and earlier, Sonnet 5 against 4.x, Haiku 4.5 against 3.5, at the 5-minute cache-write tier with no discounts. A subscription plan is not billed per token, so the figure is what the same tokens would cost at list. Repeated JSONL lines for the same API response are counted once.
+- Only the **latest session** (most recently modified) per project and agent is read.
+- Costs are **estimates**, for Claude models only (Codex and Gemini sessions show tokens and no cost rather than a guessed price), at Anthropic's published API list prices per model generation (`ModelPricing` cites the page): Fable 5.1 and 5, Opus 4.5 and later against 4.1 and earlier, Sonnet 5 against 4.x, Haiku 4.5 against 3.5, at the 5-minute cache-write tier with no discounts. A subscription plan is not billed per token, so the figure is what the same tokens would cost at list. Repeated JSONL lines for the same API response are counted once.
 - `ClaudeKeychain` reads Claude Code's OAuth item through Apple's `security` tool first — the item's partition list is `apple-tool:`, so that read is silent and fresh on every call, where a Security-framework read from a GitHub-signed app prompts for the login password and "Always Allow" is forgotten at the next token refresh — and falls back to the framework.
 - `ClaudeQuota` reads both shapes of `/api/oauth/usage`: the `limits` array (where a per-model weekly cap such as Fable's lives, with the top-level `seven_day_<model>` keys null) and the older top-level windows. `spend` (or the older `extra_usage`) becomes `ClaudeQuota.Spend`, money in the account's own currency, and `seven_day_breakdown` becomes `weekShares`.
 - The parser is defensive: malformed, truncated, or garbage lines are skipped, never fatal.

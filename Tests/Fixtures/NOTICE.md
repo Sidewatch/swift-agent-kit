@@ -12,5 +12,13 @@ From [jazzyalex/agent-sessions](https://github.com/jazzyalex/agent-sessions) at 
 Renamed `rollout-*.jsonl` as Codex names them. That project's `codex_050`–`052` fixtures
 were NOT taken: their `turn.completed` record type exists nowhere in Codex's source.
 
-MIT License — Copyright (c) 2026 Alexander Malakhov. The full licence text:
+## Gemini/
+
+`session-v040.jsonl` is `Resources/Fixtures/stage0/agents/gemini/jsonl_v040.jsonl` from the same
+repository and commit, recorded in its `docs/agent-json-tracking.md` (2026-04-29) as the JSONL
+written by a fresh Gemini CLI 0.40.0 session. Parser rules were checked against
+google-gemini/gemini-cli at `2fe7c2d` (`packages/core/src/services/chatRecordingService.ts`,
+`chatRecordingTypes.ts`, `config/storage.ts`, `config/projectRegistry.ts`, `tools/`).
+
+Both folders: MIT License — Copyright (c) 2026 Alexander Malakhov. The full licence text:
 <https://github.com/jazzyalex/agent-sessions/blob/main/LICENSE>.

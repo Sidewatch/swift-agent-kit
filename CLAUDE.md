@@ -8,12 +8,13 @@ A tiny, dependency-free reader for terminal AI coding-agent session transcripts.
 
 ## Module map
 
-- `Adapters/` — the engine: adapters: Agents, ClaudeCodeAdapter
+- `Adapters/` — the engine: adapters: Agents (registry, `resolve(candidates:preferring:)`, `editedFiles`), ClaudeCodeAdapter, CodexAdapter, GeminiAdapter
 - `Monitoring/` — the engine: monitoring: BurnDetector (loop detection over a timeline)
 - `Models/` — value types — the shape of a thing, nothing else: AgentSummary, AgentUsage, ClaudeCredentials, ClaudeQuota, ClaudeQuota+Display, TimelineEvent, TurnBoundary, TurnEffort (+Display: `modelLabel`, `costLabel`, `shortModel`), UsageReport
 - `Protocols/` — protocols the module exposes: AgentAdapter
-- `Support/` — pure helpers: ClaudeKeychain, ClaudeSessionIndex, ClockFormat, Files, FileStat, ISOTimestamp, JSONFile
-- `Transcripts/` — the engine: transcripts: TranscriptCache, TranscriptState
+- `Support/` — pure helpers: ClaudeKeychain, ClaudeSessionIndex, CodexSessionIndex, GeminiSessionIndex, ClockFormat, Files, FileStat, ISOTimestamp, JSONFile, PersistedOutput, TranscriptText
+- `Transcripts/` — the engine: transcripts: TranscriptParsing (one line-at-a-time state per format), TranscriptCache (incremental reads), EventBuffer (the bounded timeline), ClaudeTranscriptState, CodexTranscriptState, GeminiTranscriptState
+- `Tests/Fixtures/` — sanitized real transcripts per agent; `NOTICE.md` records where each came from and which source each parser was checked against
 - `Usage/` — the engine: usage: ClaudeQuotaCache, ClaudeUsageEndpoint, ModelPricing, UsageAggregator, UsageRecord, UsageTotals
 
 ## Rules
