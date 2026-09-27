@@ -98,28 +98,42 @@ public enum TerminalStatus: Equatable, Sendable {
     ///   - `.../claude/versions/2.1.223`      → only the PATH says it (the binary is a version)
     ///   - `node .../@openai/codex/cli.js`    → only the ARGUMENTS say it
     public static func isAgentProcess(_ name: String?, path: String? = nil, args: String? = nil) -> Bool {
-        if let name = name?.lowercased(), !name.isEmpty,
-           exactAgentProcessNames.contains(name)
-            || agentProcessNames.contains(where: { hasAgentPrefix(name, $0) }) { return true }
+        agentName(name, path: path, args: args) != nil
+    }
+
+    /// WHICH agent the foreground program is — its canonical name from ``agentProcessNames`` /
+    /// ``exactAgentProcessNames`` (`"codex"`, `"claude"`, `"pi"`) — by the same three tiers as
+    /// ``isAgentProcess(_:path:args:)``; nil when it is not one. A package name maps to its
+    /// agent (`@openai/codex-cli` → `codex`).
+    public static func agentName(_ name: String?, path: String? = nil, args: String? = nil) -> String? {
+        if let name = name?.lowercased(), !name.isEmpty {
+            if exactAgentProcessNames.contains(name) { return name }
+            if let agent = agentProcessNames.first(where: { hasAgentPrefix(name, $0) }) { return agent }
+        }
         if let args = args?.lowercased(), !args.isEmpty {
             // Split on separators so `@openai/codex/cli.js` yields "codex" as its own token, and a
-            // path merely CONTAINING the word does not.
+            // path merely CONTAINING the word does not. Whole tokens, so the exact names belong
+            // here too — without them an agent installed under a runtime (`node …/pi/cli.js`) is
+            // invisible to every tier.
             let tokens = Set(args.split(whereSeparator: { "/\\ \t@".contains($0) }).map(String.init))
-            // `exactAgentProcessNames` belongs here too: these are whole tokens already, so
-            // there is no prefix to be loose about, and without them an agent installed under a
-            // runtime (`node …/pi/cli.js`) is invisible to every tier.
-            if (agentProcessNames + agentPackageNames).contains(where: { tokens.contains($0) })
-                || exactAgentProcessNames.contains(where: { tokens.contains($0) }) { return true }
+            if let agent = agentProcessNames.first(where: tokens.contains) { return agent }
+            if let package = agentPackageNames.first(where: tokens.contains) { return packageAgents[package] }
+            if let agent = exactAgentProcessNames.sorted().first(where: tokens.contains) { return agent }
         }
-        guard let path = path?.lowercased(), !path.isEmpty else { return false }
+        guard let path = path?.lowercased(), !path.isEmpty else { return nil }
         // EXACT component match. A prefix rule would fire on any directory merely starting with
         // an agent's name — a project called `claude-notes` would make every shell inside it look
         // like a running agent, which is the false positive the whitelist exists to prevent.
         // Versioned or suffixed BINARIES are already covered by the name check above.
         let components = Set(path.split(separator: "/").map(String.init))
-        return agentProcessNames.contains { components.contains($0) }
-            || exactAgentProcessNames.contains { components.contains($0) }
+        return agentProcessNames.first(where: components.contains) ?? exactAgentProcessNames.sorted().first(where: components.contains)
     }
+
+    /// Which agent each of ``agentPackageNames`` installs.
+    static let packageAgents: [String: String] = [
+        "claude-code": "claude", "codex-cli": "codex", "aider-chat": "aider", "gemini-cli": "gemini",
+        "amp-cli": "amp", "opencode-ai": "opencode", "goose-ai": "goose",
+    ]
 
     /// The whole rule, in one place, so a test calls the REAL derivation rather than a copy.
     /// Precedence: an unacknowledged attention signal outranks everything (a waiting agent is

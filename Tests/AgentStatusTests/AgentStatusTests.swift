@@ -166,4 +166,17 @@ final class AgentStatusTests: XCTestCase {
         XCTAssertTrue(TerminalStatus.isAgentProcess("1.4.2", path: "/Users/x/.local/share/crush/versions/1.4.2"))
         XCTAssertTrue(TerminalStatus.isAgentProcess("2.0.0", path: "/Users/x/.local/share/droid/2.0.0"))
     }
+
+    /// WHICH agent, by the same three tiers: the name, the arguments (a package maps to its
+    /// agent), the path — so a caller can read that agent's session.
+    func testAgentNameSaysWhichAgentRuns() {
+        XCTAssertEqual(TerminalStatus.agentName("codex"), "codex")
+        XCTAssertEqual(TerminalStatus.agentName("claude-code"), "claude", "a suffixed binary is its agent")
+        XCTAssertEqual(TerminalStatus.agentName("node", args: "node /usr/lib/node_modules/@openai/codex/bin/codex.js"), "codex")
+        XCTAssertEqual(TerminalStatus.agentName("node", args: "node /opt/homebrew/lib/node_modules/@google/gemini-cli/dist/index.js"), "gemini")
+        XCTAssertEqual(TerminalStatus.agentName("2.1.223", path: "/Users/me/.local/share/claude/versions/2.1.223"), "claude")
+        XCTAssertEqual(TerminalStatus.agentName("node", args: "node ~/.npm/pi/cli.js"), "pi")
+        XCTAssertNil(TerminalStatus.agentName("zsh"))
+        XCTAssertNil(TerminalStatus.agentName("vim", path: "/Users/me/claude-notes/vim"), "a folder starting with an agent's name is not one")
+    }
 }
