@@ -40,7 +40,7 @@ public struct GeminiAdapter: AgentAdapter {
     public func latestSession(for root: URL) -> URL? { index.latestSession(for: root) }
 
     public func events(for root: URL) -> [TimelineEvent] {
-        cache.results(for: root, file: latestSession(for: root)).events.map { Self.resolved($0, in: root) }
+        cache.results(for: root, file: latestSession(for: root)).events.map { SessionPaths.resolved($0, in: root) }
     }
 
     public func events(fromSession url: URL) -> [TimelineEvent] { cache.results(for: url, file: url).events }
@@ -48,20 +48,7 @@ public struct GeminiAdapter: AgentAdapter {
     public func usage(for root: URL) -> AgentUsage? { cache.results(for: root, file: latestSession(for: root)).usage }
 
     public func summary(for root: URL) -> AgentSummary? {
-        guard let edited = cache.results(for: root, file: latestSession(for: root)).summary?.editedFiles else { return nil }
-        return AgentSummary(editedFiles: Set(edited.map { Self.absolute($0, in: root) }))
-    }
-
-    /// Gemini's edit tools take a path relative to the project root as well as an absolute one
-    /// (`tools/edit.ts`: `path.resolve(getTargetDir(), file_path)`).
-    static func absolute(_ path: String, in root: URL) -> String {
-        path.hasPrefix("/") ? path : root.appendingPathComponent(path).standardizedFileURL.path
-    }
-
-    private static func resolved(_ event: TimelineEvent, in root: URL) -> TimelineEvent {
-        guard let path = event.filePath, !path.hasPrefix("/") else { return event }
-        var event = event
-        event.filePath = absolute(path, in: root)
-        return event
+        // Gemini's edit tools take a path relative to the project root (`tools/edit.ts`).
+        SessionPaths.resolved(cache.results(for: root, file: latestSession(for: root)).summary, in: root)
     }
 }

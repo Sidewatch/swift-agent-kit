@@ -112,7 +112,7 @@ struct CodexTranscriptState: TranscriptParsing {
         let args = arguments.flatMap { JSONFile.object(from: Data($0.utf8)) }
         if name == "apply_patch" {
             let patch = (args?["input"] as? String) ?? arguments ?? ""
-            for path in Self.patchedPaths(patch) {
+            for path in ApplyPatch.paths(patch) {
                 let absolute = path.hasPrefix("/") ? path : ((cwd ?? "") as NSString).appendingPathComponent(path)
                 edited.insert(absolute)
                 buffer.append(TimelineEvent(kind: .fileEdit, title: name, detail: TranscriptText.shortPath(absolute), filePath: absolute,
@@ -199,19 +199,6 @@ extension CodexTranscriptState {
         guard let argv = value as? [String], !argv.isEmpty else { return nil }
         if argv.count == 3, ["-lc", "-c"].contains(argv[1]) { return argv[2] }
         return argv.joined(separator: " ")
-    }
-
-    /// The files an `apply_patch` body names, in order (`codex-rs/apply-patch/src/parser.rs`).
-    static func patchedPaths(_ patch: String) -> [String] {
-        let markers = ["*** Add File: ", "*** Update File: ", "*** Delete File: ", "*** Move to: "]
-        var paths: [String] = []
-        for line in patch.split(whereSeparator: \.isNewline) {
-            for marker in markers where line.hasPrefix(marker) {
-                let path = line.dropFirst(marker.count).trimmingCharacters(in: .whitespaces)
-                if !path.isEmpty, !paths.contains(path) { paths.append(path) }
-            }
-        }
-        return paths
     }
 
     /// A tool output's text: a plain string, one `{text}` item, a list of them, or the legacy JSON

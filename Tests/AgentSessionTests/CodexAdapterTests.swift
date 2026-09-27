@@ -73,7 +73,7 @@ final class CodexAdapterTests: XCTestCase {
     /// `codex-rs/apply-patch/src/parser.rs` markers; a relative path is the session's cwd's.
     func testAPatchIsTheFilesItEditsUnderTheSessionsDirectory() throws {
         let patch = "*** Begin Patch\n*** Update File: src/a.swift\n@@\n-x\n+y\n*** Add File: b.md\n+hi\n*** Delete File: /abs/c.txt\n*** End Patch"
-        XCTAssertEqual(CodexTranscriptState.patchedPaths(patch), ["src/a.swift", "b.md", "/abs/c.txt"])
+        XCTAssertEqual(ApplyPatch.paths(patch), ["src/a.swift", "b.md", "/abs/c.txt"])
         var state = CodexTranscriptState()
         for line in [
             #"{"type":"session_meta","payload":{"cwd":"/work/app","source":"cli"}}"#,

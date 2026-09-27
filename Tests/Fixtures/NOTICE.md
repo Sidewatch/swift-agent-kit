@@ -20,5 +20,16 @@ written by a fresh Gemini CLI 0.40.0 session. Parser rules were checked against
 google-gemini/gemini-cli at `2fe7c2d` (`packages/core/src/services/chatRecordingService.ts`,
 `chatRecordingTypes.ts`, `config/storage.ts`, `config/projectRegistry.ts`, `tools/`).
 
-Both folders: MIT License — Copyright (c) 2026 Alexander Malakhov. The full licence text:
+## Grok/
+
+`session/` and `subagent/` are `Resources/Fixtures/stage0/agents/grok/` (and its `subagent/`) from
+the same repository and commit, recorded in `docs/agent-support/agent-support-matrix.yml` as
+captures of real Grok Build CLI runs (`~/.grok/sessions/…`, verified to 1.0.24). Parser rules were
+checked against xai-org/grok-build at `f0e3be1` (v1.0.41): `xai-grok-sampling-types/src/conversation.rs`,
+`xai-grok-config/src/paths.rs`, `xai-grok-shell/src/session/{persistence.rs,usage_file.rs,signals.rs}`,
+`xai-grok-agent/src/config.rs` and `xai-grok-tools/src/implementations/`. The capture's
+`synthetic_reason: "environment_context"` is not in that source (a newer build's); the parser treats
+any reason but `interjection` as Grok's, so it holds either way.
+
+All three folders: MIT License — Copyright (c) 2026 Alexander Malakhov. The full licence text:
 <https://github.com/jazzyalex/agent-sessions/blob/main/LICENSE>.

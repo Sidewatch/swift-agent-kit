@@ -25,6 +25,7 @@ public enum Agents {
         ClaudeCodeAdapter(),
         CodexAdapter(),
         GeminiAdapter(),
+        GrokAdapter(),
     ]
 
     /// The adapter with this ``AgentAdapter/name``, if the library has one.
