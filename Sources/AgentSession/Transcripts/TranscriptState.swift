@@ -253,8 +253,8 @@ struct TranscriptState {
 
     /// Compresses an absolute path to its last two components (`.../Dir/File.swift`).
     private static func shortPath(_ p: String) -> String {
-        let parts = p.split(separator: "/")
-        return parts.count <= 2 ? p : ".../" + parts.suffix(2).joined(separator: "/")
+        let tail = p.pathTail()
+        return tail == p ? p : ".../" + tail
     }
 
     /// Renders a `Date` as `HH:mm` on the viewer's local clock.
