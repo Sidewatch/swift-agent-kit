@@ -44,6 +44,7 @@ struct UsageTotals {
         if let hour = r.localHour { hourCounts[hour, default: 0] += 1 }
     }
 
+    /// The finished report, streaks and session statistics included.
     func report(windowDays: Int?) -> UsageReport {
         let (current, longest) = UsageAggregator.streaks(activeDays)
         return UsageReport(

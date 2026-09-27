@@ -11,19 +11,12 @@
 
 import Foundation
 
-/// The current plan's rolling-window usage, as returned by Anthropic's internal
-/// `/api/oauth/usage` endpoint (undocumented — see `ClaudeUsageQuota` app-side).
-///
-/// Two shapes are read. Since Sep 2026 the body carries a `limits` array — one row per cap with
-/// `kind` (`session`, `weekly_all`, `weekly_scoped`), `percent`, `resets_at` and, for a scoped
-/// weekly cap, `scope.model.display_name` — and that array is the source of truth when present:
-/// the per-model weekly cap (Fable) lives ONLY there, the top-level `seven_day_<model>` keys
-/// are null, and the top level also carries internal feature buckets under codenames that are
-/// not limits. The older shape is the top-level windows alone, each with a **percent used**
-/// `utilization` (0–100) and a reset time; it is still parsed when no `limits` array arrives.
-/// Money against the monthly usage-credit cap comes from `spend` (or the older `extra_usage`),
-/// and `seven_day_breakdown` says which surfaces used the week. Parsing is lenient: anything
-/// that is not well-formed is dropped, never fatal.
+/// The current plan's rolling-window usage, from Anthropic's internal, undocumented
+/// `/api/oauth/usage` endpoint. A `limits` array (one row per cap: `kind`, `percent`,
+/// `resets_at`, a scoped cap's model) is the source of truth when present — per-model weekly
+/// caps live ONLY there; otherwise the older top-level windows (`utilization` 0–100) are read.
+/// Spend comes from `spend` (or the older `extra_usage`), surface shares from
+/// `seven_day_breakdown`. Lenient: anything malformed is dropped, never fatal.
 public struct ClaudeQuota: Sendable, Equatable {
 
     /// One rolling window: how much of it is used, and when it resets.
@@ -33,6 +26,7 @@ public struct ClaudeQuota: Sendable, Equatable {
         /// When the window rolls over, if the endpoint provided it.
         public let resetsAt: Date?
 
+        /// A window `utilization` percent used, rolling over at `resetsAt`.
         public init(utilization: Double, resetsAt: Date?) {
             self.utilization = utilization
             self.resetsAt = resetsAt
@@ -52,6 +46,7 @@ public struct ClaudeQuota: Sendable, Equatable {
         /// The window's usage.
         public let window: Window
 
+        /// A window as it arrived under `key`.
         public init(key: String, window: Window) {
             self.key = key
             self.window = window
@@ -61,7 +56,9 @@ public struct ClaudeQuota: Sendable, Equatable {
     /// Money spent against the monthly usage-credit cap, in the account's own currency and
     /// minor units (pence, cents): `usedMinor` of `limitMinor`, `exponent` decimal places.
     public struct Spend: Sendable, Equatable {
+        /// Spent so far, in minor units.
         public let usedMinor: Int
+        /// The monthly cap, in minor units.
         public let limitMinor: Int
         /// ISO 4217 code (`GBP`, `USD`, `EUR`).
         public let currency: String
@@ -70,6 +67,7 @@ public struct ClaudeQuota: Sendable, Equatable {
         /// Percent of the cap used, 0–100.
         public let percent: Int
 
+        /// A spend figure with every field explicit.
         public init(usedMinor: Int, limitMinor: Int, currency: String, exponent: Int, percent: Int) {
             self.usedMinor = usedMinor
             self.limitMinor = limitMinor
@@ -81,9 +79,12 @@ public struct ClaudeQuota: Sendable, Equatable {
 
     /// One surface's share of the week (`Claude Code` 98, `Chats` 2).
     public struct Share: Sendable, Equatable {
+        /// The surface's display name.
         public let name: String
+        /// Its share of the week's usage, 0–100.
         public let percent: Int
 
+        /// A share of `percent` for `name`.
         public init(name: String, percent: Int) {
             self.name = name
             self.percent = percent
@@ -94,7 +95,7 @@ public struct ClaudeQuota: Sendable, Equatable {
     /// the endpoint's order, keyed `session`, `weekly_all`, `weekly_scoped:<Name>`. From the
     /// older top-level shape: the long-known keys first (5-hour, weekly, Opus, Sonnet), then
     /// anything new (`seven_day_fable`, …) sorted by key — parsing by shape rather than by a
-    /// fixed key list is what kept new model caps appearing without a code change.
+    /// fixed key list lets new model caps appear without a code change.
     public let windows: [NamedWindow]
     /// Usage-credit spend this month, when the account has credits enabled.
     public let spend: Spend?
@@ -115,12 +116,14 @@ public struct ClaudeQuota: Sendable, Equatable {
         windows.first { $0.key == key }?.window
     }
 
+    /// A quota over any windows, optionally with spend and surface shares.
     public init(windows: [NamedWindow], spend: Spend? = nil, weekShares: [Share] = []) {
         self.windows = windows
         self.spend = spend
         self.weekShares = weekShares
     }
 
+    /// A quota from the four long-known windows, under their top-level keys.
     public init(fiveHour: Window?, sevenDay: Window?, sevenDayOpus: Window?, sevenDaySonnet: Window?) {
         var list: [NamedWindow] = []
         if let fiveHour { list.append(NamedWindow(key: "five_hour", window: fiveHour)) }
@@ -199,7 +202,7 @@ public struct ClaudeQuota: Sendable, Equatable {
         }
     }
 
-    /// String convenience for the parser (used by the `--dump-quota` diagnostic).
+    /// String convenience for the `Data` parser.
     public static func parse(_ json: String) -> ClaudeQuota? {
         parse(Data(json.utf8))
     }

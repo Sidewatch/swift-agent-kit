@@ -11,7 +11,7 @@
 
 import Foundation
 
-/// A session roll-up: the files an agent edited and its current to-do list.
+/// A session roll-up: the files an agent edited.
 public struct AgentSummary: Sendable {
 
     /// Absolute paths of every file the agent wrote to this session.

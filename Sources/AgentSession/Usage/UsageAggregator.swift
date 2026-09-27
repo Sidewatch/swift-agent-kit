@@ -88,12 +88,15 @@ public enum UsageAggregator {
 
     // MARK: - Accumulation
 
+    /// A running cost/token subtotal while scanning: input, output, cache read, cache write.
     struct Bucketing {
         var cost = 0.0, i = 0, o = 0, cr = 0, cw = 0
+        /// Adds one message's cost and token counts.
         mutating func add(cost c: Double, i ai: Int, o ao: Int, cr acr: Int, cw acw: Int) {
             cost += c; i += ai; o += ao; cr += acr; cw += acw
         }
     }
+    /// The subtotals as report buckets, most expensive first.
     static func buckets(_ d: [String: Bucketing]) -> [UsageReport.Bucket] {
         d.map { UsageReport.Bucket(key: $0.key, costUSD: $0.value.cost, inputTokens: $0.value.i,
                                    outputTokens: $0.value.o, cacheReadTokens: $0.value.cr,

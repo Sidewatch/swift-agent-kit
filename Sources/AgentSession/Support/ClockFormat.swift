@@ -10,11 +10,10 @@
 
 import Foundation
 
-/// `HH:mm` in a fixed locale, once. A `DateFormatter` with an explicit `dateFormat` still
-/// honours the user's locale, so under a 12-hour region the pattern is rewritten and one
-/// adapter's rows would render differently from another's; `en_US_POSIX` pins it. Built
-/// once — DateFormatter is expensive.
+/// `HH:mm` in a fixed locale, built once (DateFormatter is expensive). `en_US_POSIX` pins it:
+/// otherwise a 12-hour region rewrites even an explicit `dateFormat`.
 enum ClockFormat {
+    /// The shared formatter: 24-hour, local time zone.
     static let hhmm: DateFormatter = {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")

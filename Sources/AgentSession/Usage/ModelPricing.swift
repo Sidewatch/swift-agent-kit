@@ -11,22 +11,16 @@
 import Foundation
 
 /// Per-million-token USD list prices by model family and generation, from Anthropic's published
-/// pricing page (platform.claude.com/docs/en/about-claude/pricing, read 18 Sep 2026). Shared by
-/// the per-session usage accumulator (``TranscriptState``) and the cross-project aggregate
-/// (``UsageAggregator``) so a session's cost can never disagree with the dashboard's total.
-///
-/// Estimates: list prices at the 5-minute cache-write tier, no batch or volume discount, and a
-/// subscription plan is not billed per token at all — the number is what the same tokens would
-/// cost at API list prices. The app labels every cost as approximate.
-///
-/// The generation is read from the id (`claude-opus-4-8`, `claude-haiku-4-5-20251001`,
-/// `claude-3-5-sonnet-20241022`): its short numeric parts, in order. Prices changed at fixed
-/// points — Opus and Haiku at 4.5, Sonnet at 5, Fable's cache read at 5.1 — and an id with no
-/// version at all is charged its family's older rates, the only honest reading of a string that
-/// says nothing about which one it is.
+/// pricing page (platform.claude.com/docs/en/about-claude/pricing). Shared by ``TranscriptState``
+/// and ``UsageAggregator`` so a session's cost never disagrees with the dashboard's total.
+/// Estimates only: 5-minute cache-write tier, no discounts, and a subscription is not billed per
+/// token. Prices change at fixed generations (Opus and Haiku 4.5, Sonnet 5, Fable's cache read
+/// 5.1); an id with no version is charged its family's older rates.
 public enum ModelPricing {
+    /// USD per million tokens for each kind of token.
     struct Rates: Equatable { let input, cacheWrite, cacheRead, output: Double }
 
+    /// The rates `model` is billed at, by family and generation; unknown families price as Sonnet.
     static func rates(for model: String) -> Rates {
         let m = model.lowercased()
         let v = generation(of: m)

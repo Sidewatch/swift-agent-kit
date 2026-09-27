@@ -13,11 +13,10 @@ import Foundation
 /// Claude Code keeps a large tool output OUT of the transcript: the `tool_result` block holds a
 /// `<persisted-output>` stub — "Output too large (37.3KB). Full output saved to: <path>" and a
 /// 2 KB preview of the START — and the whole output sits in the session's `tool-results/`
-/// folder (24 Sep 2026, seen in every recent transcript on David's machine). A reader that
-/// wants the END of a result — a test runner's summary line, a migration's last message — must
-/// follow the path. Only a file in a `tool-results` folder is followed; anything else stays as
-/// the transcript wrote it.
+/// folder. A reader that wants the END of a result (a test runner's summary line) must follow
+/// the path. Only a file in a `tool-results` folder is followed.
 public enum PersistedOutput {
+    /// The prefix every stub starts with.
     public static let marker = "<persisted-output>"
 
     /// The path a stub names, or nil for text that is not a stub.

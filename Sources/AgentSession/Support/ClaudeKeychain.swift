@@ -15,13 +15,11 @@ import FoundationExtensions
 
 /// Claude Code's OAuth credentials in the login Keychain.
 ///
-/// Claude Code writes the item with Apple's `security` tool, so the item's partition list is
-/// `apple-tool:` (checked on a live Mac, 18 Sep 2026): Apple's command-line tools read it
-/// silently, and any GUI app reading it through the Security framework is asked for the login
-/// password every time — "Always Allow" adds the app's team to the list, and the next token
-/// refresh rewrites the item and forgets it. So the first path here IS that tool, spawned for a
-/// silent read that is fresh on every call; the framework read remains the fallback for an item
-/// written some other way, and a host should take that one at most once per launch.
+/// Claude Code writes the item with Apple's `security` tool, so its partition list is
+/// `apple-tool:`: that tool reads it silently, while a GUI app using the Security framework is
+/// asked for the login password every time (a token refresh forgets "Always Allow"). So the
+/// first path IS that tool; the framework read is the fallback for an item written some other
+/// way, and a host should take it at most once per launch.
 public enum ClaudeKeychain {
     /// The generic-password service Claude Code stores its credentials under.
     public static let service = "Claude Code-credentials"

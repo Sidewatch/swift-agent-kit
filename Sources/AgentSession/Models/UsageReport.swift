@@ -11,19 +11,26 @@
 
 import Foundation
 
-/// A cross-session usage roll-up the dashboard renders — agent-neutral, so a future
-/// adapter (Codex, …) can produce the same shape. Cost is estimated from approximate
+/// A cross-session usage roll-up the dashboard renders — agent-neutral, so any adapter can
+/// produce the same shape. Cost is estimated from approximate
 /// list prices (``ModelPricing``); duplicate transcript lines for one API response are
 /// counted once.
 public struct UsageReport: Equatable, Sendable {
     /// A cost/token subtotal for one grouping key (a model name or a project).
     public struct Bucket: Equatable, Sendable {
+        /// The model name or project path this subtotal groups by.
         public let key: String
+        /// Estimated cost in US dollars.
         public let costUSD: Double
+        /// Fresh input tokens.
         public let inputTokens: Int
+        /// Output tokens.
         public let outputTokens: Int
+        /// Tokens read from the prompt cache.
         public let cacheReadTokens: Int
+        /// Tokens written to the prompt cache.
         public let cacheCreateTokens: Int
+        /// A subtotal with every figure explicit.
         public init(key: String, costUSD: Double, inputTokens: Int, outputTokens: Int,
                     cacheReadTokens: Int, cacheCreateTokens: Int) {
             self.key = key; self.costUSD = costUSD
@@ -32,10 +39,15 @@ public struct UsageReport: Equatable, Sendable {
         }
     }
 
+    /// Estimated cost in US dollars across the window.
     public let totalCostUSD: Double
+    /// Fresh input tokens across the window.
     public let inputTokens: Int
+    /// Output tokens across the window.
     public let outputTokens: Int
+    /// Prompt-cache reads across the window.
     public let cacheReadTokens: Int
+    /// Prompt-cache writes across the window.
     public let cacheCreateTokens: Int
     /// Distinct API responses counted.
     public let messageCount: Int
@@ -71,6 +83,7 @@ public struct UsageReport: Equatable, Sendable {
     /// The most-used model (top of `byModel`), or nil when there's no usage.
     public var favoriteModel: String? { byModel.first?.key }
 
+    /// A report with the core totals; the streak and session statistics default to empty.
     public init(totalCostUSD: Double, inputTokens: Int, outputTokens: Int, cacheReadTokens: Int,
                 cacheCreateTokens: Int, messageCount: Int, byModel: [Bucket], byProject: [Bucket],
                 dailyCostUSD: [String: Double], windowDays: Int?,
@@ -91,6 +104,7 @@ public struct UsageReport: Equatable, Sendable {
         self.mostActiveDay = mostActiveDay
     }
 
+    /// No usage at all, for an all-time window.
     public static let empty = UsageReport(totalCostUSD: 0, inputTokens: 0, outputTokens: 0,
         cacheReadTokens: 0, cacheCreateTokens: 0, messageCount: 0, byModel: [], byProject: [],
         dailyCostUSD: [:], windowDays: nil)

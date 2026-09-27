@@ -46,20 +46,12 @@ public struct TurnBoundary: Equatable {
     /// The number of events in the turn.
     public var count: Int { end - start + 1 }
 
-    /// A stable identifier for the turn, derived from its opening prompt and timestamp.
-    ///
-    /// Must not be a position. Turns are re-derived on every poll, a transcript that rolls or
-    /// replays re-points indices, and `TranscriptState` trims events from the FRONT once a
-    /// session passes its cap — so every index shifts as a long session grows, which would
-    /// orphan every persisted checkpoint. Must not be Swift's `hashValue` either: that is seeded
-    /// per process and changes across relaunches. FNV-1a over the opening prompt and its
-    /// timestamp is stable forever and already ref-name-safe.
-    ///
-    /// - Note: The prompt here is the event's `detail`, and the timestamp is only `HH:mm`, so two
-    ///   turns opened by the SAME text within the same clock minute collapse to one id and share
-    ///   a checkpoint — the later turn's diff would then start too early. Accepted deliberately:
-    ///   the alternatives all reintroduce position, which is the worse failure. Fixing it
-    ///   properly means carrying a full-precision timestamp on `TimelineEvent`.
+    /// A stable identifier for the turn: FNV-1a over its opening prompt and timestamp, stable
+    /// across relaunches and ref-name-safe. Must not be a position (`TranscriptState` trims
+    /// events from the FRONT, shifting every index and orphaning persisted checkpoints) nor
+    /// `hashValue` (seeded per process).
+    /// - Note: The timestamp is only `HH:mm`, so two turns opened by the SAME text in the same
+    ///   minute share an id — accepted, since every alternative reintroduces position.
     public var id: String {
         var hash: UInt64 = 0xcbf2_9ce4_8422_2325
         for byte in Array("\(timestamp)|\(prompt)".utf8) {
@@ -72,12 +64,8 @@ public struct TurnBoundary: Equatable {
     /// Splits a chronological timeline into turns, oldest first.
     ///
     /// Every `.userPrompt` opens a turn and closes the previous one. Events *before* the first
-    /// prompt — a resumed session's replayed tail, or a transcript that simply starts mid-flow —
-    /// belong to no turn and are dropped rather than folded into the first one, which would
-    /// attribute work to a prompt that didn't cause it.
-    ///
-    /// - Parameter events: The timeline, oldest first.
-    /// - Returns: The turns, oldest first. Empty when no prompt appears.
+    /// prompt (a resumed session's replayed tail) belong to no turn and are dropped, not folded
+    /// into a prompt that didn't cause them. Empty when no prompt appears.
     public static func turns(in events: [TimelineEvent]) -> [TurnBoundary] {
         let starts = events.indices.filter { events[$0].kind == .userPrompt }
         guard !starts.isEmpty else { return [] }

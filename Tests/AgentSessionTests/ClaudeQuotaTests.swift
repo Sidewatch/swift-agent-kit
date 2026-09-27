@@ -26,7 +26,7 @@ final class ClaudeQuotaTests: XCTestCase {
     }
     """
 
-    /// The Sep 2026 shape, captured from a live account (amounts changed): the per-model weekly
+    /// The `limits` shape, captured from a live account (amounts changed): the per-model weekly
     /// cap is a `limits` row scoped to a model, the `seven_day_<model>` keys are null, internal
     /// feature buckets sit at the top level under codenames, and money is under `spend`.
     private let live = """

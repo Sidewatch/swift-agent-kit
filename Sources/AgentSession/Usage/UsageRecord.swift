@@ -12,15 +12,22 @@ import Foundation
 
 /// One usage-bearing transcript line: the model, the four token counts and when.
 struct UsageRecord {
+    /// The API response id (`message.id`, else `requestId`), for counting a response once.
     let id: String?
+    /// The model id, or `"unknown"` for a synthetic or missing one.
     let model: String
+    /// The local calendar day, `yyyy-MM-dd`.
     let day: String
+    /// The local hour, 0–23, when the timestamp gives one.
     let localHour: Int?
     /// The message's instant, when its timestamp parsed — what session lengths are measured from.
     let instant: Date?
+    /// Token counts by kind: fresh input, cache writes, cache reads, output.
     let input: Int, cacheWrite: Int, cacheRead: Int, output: Int
 
+    /// Every token the line reported.
     var tokens: Int { input + cacheWrite + cacheRead + output }
+    /// Estimated USD cost at list prices (``ModelPricing``).
     var cost: Double { ModelPricing.cost(model: model, input: input, cacheWrite: cacheWrite, cacheRead: cacheRead, output: output) }
 
     /// Nil unless the line is a JSON object carrying `message.usage`.
@@ -30,9 +37,8 @@ struct UsageRecord {
               let usage = msg["usage"] as? [String: Any] else { return nil }
         id = (msg["id"] as? String) ?? (obj["requestId"] as? String)
         model = (msg["model"] as? String).flatMap { $0.isEmpty || $0 == "<synthetic>" ? nil : $0 } ?? "unknown"
-        // The LOCAL calendar day and hour. The day used to be the timestamp's first ten
-        // characters — its UTC date — so for anyone west of UTC every evening's work landed on
-        // tomorrow's heatmap cell and the current streak read 0 until the next day (18 Sep 2026).
+        // The LOCAL calendar day and hour. Must not be the timestamp's first ten characters
+        // (its UTC date): west of UTC, evening work would land on tomorrow's heatmap cell.
         // The raw-string fallbacks cover a timestamp the parser rejects.
         let ts = obj["timestamp"] as? String
         let instant = ts.flatMap(ISOTimestamp.date)

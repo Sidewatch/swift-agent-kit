@@ -20,6 +20,7 @@ import Foundation
 /// persistent 429s), so the probe presents that UA; polling faster than a few minutes is what
 /// makes it 429 — see ``ClaudeQuotaCache``.
 public enum ClaudeUsageEndpoint {
+    /// The endpoint's address.
     public static let url = "https://api.anthropic.com/api/oauth/usage"
     /// Required for the non-throttled bucket. Bump if the endpoint starts rejecting an old client.
     public static let userAgent = "claude-code/2.1.0"

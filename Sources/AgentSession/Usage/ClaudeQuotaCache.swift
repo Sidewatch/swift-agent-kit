@@ -14,6 +14,7 @@ import Foundation
 /// `minRefreshInterval` — polling harder is exactly what makes the endpoint 429, so the cache is
 /// a correctness feature, not an optimisation. Delivers on the main queue.
 public final class ClaudeQuotaCache: @unchecked Sendable {
+    /// The least time between two fetches, in seconds.
     public let minRefreshInterval: TimeInterval
     private let fetch: @Sendable (String) -> ClaudeQuota?
     private let lock = NSLock()

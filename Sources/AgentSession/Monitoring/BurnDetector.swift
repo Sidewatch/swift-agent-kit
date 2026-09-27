@@ -16,10 +16,8 @@ import Foundation
 /// of an episode, or nothing — and the host decides how to show it (a badge, a status line).
 ///
 /// The rule: the same normalised command `threshold` or more times as *consecutive* tool
-/// calls ending at the most recent one (the loop is live, not history). Only `.toolUse`
-/// events participate — `.fileEdit` is routine work (three edits to one file is the normal
-/// multi-hunk pattern) and breaks the run, as does any distinct tool call or a user prompt;
-/// assistant prose and empty-detail bookkeeping calls (TodoWrite-style) are skipped.
+/// calls ending at the most recent one. `.fileEdit` (routine multi-hunk work), a distinct tool
+/// call or a user prompt breaks the run; prose and empty-detail bookkeeping calls are skipped.
 public struct BurnDetector: Sendable, Equatable {
 
     /// What one `update` changed.
@@ -43,6 +41,7 @@ public struct BurnDetector: Sendable, Equatable {
     /// The episode's last reported repeat count.
     public private(set) var signalledCount = 0
 
+    /// A detector that examines the last `window` events for `threshold` consecutive repeats.
     public init(window: Int = 15, threshold: Int = 3) {
         self.window = window
         self.threshold = threshold
@@ -54,11 +53,8 @@ public struct BurnDetector: Sendable, Equatable {
     /// Normalises a tool event for loop detection — tool name plus the WHOLE command with its
     /// whitespace collapsed (capped, so a pasted file does not make every key unique) — or
     /// nil for bookkeeping calls whose detail is empty, which never participate. The label is
-    /// the command's first line, for a status line.
-    ///
-    /// Keyed on the first line alone until 5 Sep 2026, which flagged a Claude Code session
-    /// whose scripted commands all began with the same `cd …; python3 - <<'EOF'` line and
-    /// differed entirely below it. Three different commands are not a loop.
+    /// the command's first line, for a status line. Must not key on the first line alone:
+    /// scripted commands that share a `cd …; python3 - <<'EOF'` opener would read as a loop.
     public static func key(for event: TimelineEvent) -> (key: String, label: String)? {
         let line = event.detail.split(maxSplits: 1, omittingEmptySubsequences: true, whereSeparator: \.isNewline).first.map(String.init) ?? event.detail
         let label = line.trimmingCharacters(in: .whitespacesAndNewlines)

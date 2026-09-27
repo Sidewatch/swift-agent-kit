@@ -20,7 +20,7 @@ final class ModelPricingTests: XCTestCase {
         return [r.input, r.cacheWrite, r.cacheRead, r.output]
     }
 
-    /// platform.claude.com/docs/en/about-claude/pricing, read 18 Sep 2026 — input, 5-minute cache
+    /// platform.claude.com/docs/en/about-claude/pricing — input, 5-minute cache
     /// write, cache read, output per million. The ids are the ones seen in real transcripts.
     func testRatesFollowThePublishedTableByGeneration() {
         XCTAssertEqual(rates("claude-fable-5-1"), [10, 12.5, 0.25, 50])

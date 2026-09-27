@@ -10,16 +10,12 @@
 
 import Foundation
 
-/// Resolves a Claude Code **session id** to the directory that session is running in.
+/// Resolves a Claude Code **session id** to the directory that session is running in: the
+/// transcript lives at `~/.claude/projects/<encoded-cwd>/<session-id>.jsonl`.
 ///
-/// A `Stop` or `Notification` hook carries only a `session_id`. The answer is on disk: Claude
-/// Code writes each session's transcript to `~/.claude/projects/<encoded-cwd>/<session-id>.jsonl`,
-/// so the session id IS the filename and its parent directory encodes the working directory.
-///
-/// Matching ENCODES the candidate directory rather than decoding the folder name: the encoding
-/// replaces every character outside ASCII `[A-Za-z0-9]` with `-`, so it is lossy and cannot be
-/// reversed. Two different paths can still encode alike, which is why a host should treat this
-/// as the FALLBACK when a hook payload carries no `cwd` of its own.
+/// Matching ENCODES the candidate directory rather than decoding the folder name, because the
+/// encoding (every character outside ASCII `[A-Za-z0-9]` becomes `-`) is lossy. Two paths can
+/// encode alike, so treat this as a FALLBACK when a payload carries its own `cwd`.
 public final class ClaudeSessionIndex: @unchecked Sendable {
     /// `~/.claude/projects`.
     public static let defaultProjectsRoot = FileManager.default.homeDirectoryForCurrentUser
@@ -27,6 +23,7 @@ public final class ClaudeSessionIndex: @unchecked Sendable {
     /// The index over the real projects folder.
     public static let shared = ClaudeSessionIndex(projectsRoot: defaultProjectsRoot)
 
+    /// The `~/.claude/projects`-shaped folder this index scans.
     public let projectsRoot: URL
     /// session id → encoded project directory. Sessions do not move between directories, so a
     /// hit is cached for the life of the process; the scan is a directory walk and hooks arrive
@@ -34,6 +31,7 @@ public final class ClaudeSessionIndex: @unchecked Sendable {
     private var cache: [String: String] = [:]
     private let lock = NSLock()
 
+    /// An index over `projectsRoot` (a temp folder in tests).
     public init(projectsRoot: URL) { self.projectsRoot = projectsRoot }
 
     /// The encoded project directory for `sessionID`, or nil when no transcript is found — a

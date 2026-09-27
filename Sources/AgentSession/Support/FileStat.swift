@@ -12,8 +12,11 @@ import Foundation
 
 /// What a poll needs to know about a file without reading it: size, mtime, inode.
 struct FileStat: Equatable {
+    /// Bytes on disk.
     let size: UInt64
+    /// Last modification time.
     let mtime: Date?
+    /// Changes when the file is replaced rather than appended to.
     let inode: UInt64
 
     /// Nil when the file cannot be stat'ed.

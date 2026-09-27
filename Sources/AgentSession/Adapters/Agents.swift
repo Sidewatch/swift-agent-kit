@@ -19,15 +19,10 @@ public enum Agents {
 
     /// Every adapter known to the library, in detection order.
     ///
-    /// **Claude Code only, deliberately (11 Sep 2026).** Adapters for Codex CLI, Gemini CLI and
-    /// OpenCode were written from each tool's published schema and tested against fixtures typed
-    /// out by hand from that schema — never against a real session of the tool they claimed to
-    /// read, because none of them was installed. Three separate integrations drifted silently in
-    /// one afternoon (a renamed Claude tool, a moved binary path in every installed hook entry,
-    /// and the Skills catalog before them), so an adapter nobody can run is a guess that reports
-    /// "no session" forever and tells no one. Recover them with
-    /// `git log --all -- Sources/AgentSession/Adapters`. Adding an agent back is still a one-line
-    /// change here — but only bring one back with fixtures captured from a REAL run of it.
+    /// **Claude Code only, deliberately.** An adapter written from a tool's published schema and
+    /// tested only against hand-typed fixtures is a guess that reports "no session" forever and
+    /// tells no one when the format drifts. Add an agent only with fixtures captured from a REAL
+    /// run of it (earlier Codex, Gemini CLI and OpenCode adapters are in git history).
     public static let all: [AgentAdapter] = [
         ClaudeCodeAdapter(),
     ]
@@ -48,8 +43,8 @@ public enum Agents {
     /// with that adapter. Order candidates most specific first: the cwd of a
     /// terminal running an agent (Claude Code files a transcript under its OWN cwd
     /// at launch — whatever folder the shell happened to be in), then the opened
-    /// folder, its repo root, its parent. Looking up the opened folder alone found
-    /// nothing while an agent launched from a subfolder was working in plain sight.
+    /// folder, its repo root, its parent. The opened folder alone misses an agent
+    /// launched from a subfolder.
     public static func resolve(candidates: [URL]) -> (adapter: AgentAdapter, root: URL)? {
         resolve(candidates: candidates, in: all)
     }

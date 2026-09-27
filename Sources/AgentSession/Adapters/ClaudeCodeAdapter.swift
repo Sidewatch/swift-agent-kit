@@ -11,26 +11,12 @@
 
 import Foundation
 
-/// The Claude Code adapter: reads `~/.claude/projects/<cwd-with-nonalphanumerics
-/// →dashes>/<session-id>.jsonl` (read-only) and maps it onto the agent-agnostic
-/// model. The first, reference ``AgentAdapter``.
+/// The Claude Code adapter: reads `~/.claude/projects/<encoded-cwd>/<session-id>.jsonl`
+/// (read-only) and maps it onto the agent-agnostic model.
 ///
-/// **Performance contract — polling is O(appended bytes).** The three readers
-/// (``usage(for:)``, ``events(for:)``, ``summary(for:)``) are served from an
-/// internal incremental cache (``TranscriptCache``):
-/// - an unchanged transcript is answered from memory (one `stat`, zero reads);
-/// - appended lines are read from the last consumed byte offset and parsed
-///   *once*, with that single parse shared by all three readers;
-/// - a rotated, replaced, or shrunk transcript triggers one full re-parse.
-///
-/// The results are always identical to a full re-parse of the transcript's
-/// current contents — the cache changes cost, never semantics.
-///
-/// The cache is a reference held by this value, so copies of one adapter share
-/// it and it lives exactly as long as the adapter (and its copies). Create one
-/// adapter and keep polling it: a freshly constructed adapter starts cold and
-/// pays one full parse on first use (``Agents/all`` already holds a single
-/// long-lived instance).
+/// **Polling is O(appended bytes)**: the three readers share one incremental
+/// ``TranscriptCache``, whose results always equal a full re-parse. Copies share the cache, so
+/// keep one adapter and poll it; a new one starts cold (``Agents/all`` holds a long-lived one).
 public struct ClaudeCodeAdapter: AgentAdapter {
 
     /// `"Claude Code"`.
@@ -80,20 +66,16 @@ public struct ClaudeCodeAdapter: AgentAdapter {
     ///
     /// Cost is estimated from approximate per-model list prices; duplicate JSONL
     /// lines for the same API response (same `message.id`/`requestId`) count once.
-    /// - Note: Served from the incremental cache — steady-state polls cost
-    ///   O(appended bytes) and an unchanged file costs zero reads. The *first*
-    ///   call on a large existing session still parses the whole file once, so
-    ///   call off the main thread when sessions may be large.
+    /// - Note: The *first* call on a large session parses the whole file, so call off the
+    ///   main thread.
     public func usage(for root: URL) -> AgentUsage? {
         cache.results(for: root, file: latestSessionFile(for: root)).usage
     }
 
     /// The activity timeline parsed from the latest transcript, oldest first,
     /// capped to the most recent 300 events. Malformed lines are skipped.
-    /// - Note: Served from the incremental cache — steady-state polls cost
-    ///   O(appended bytes) and an unchanged file costs zero reads. The *first*
-    ///   call on a large existing session still parses the whole file once, so
-    ///   call off the main thread when sessions may be large.
+    /// - Note: The *first* call on a large session parses the whole file, so call off the
+    ///   main thread.
     public func events(for root: URL) -> [TimelineEvent] {
         cache.results(for: root, file: latestSessionFile(for: root)).events
     }
@@ -108,12 +90,10 @@ public struct ClaudeCodeAdapter: AgentAdapter {
         cache.results(for: url, file: url).events
     }
 
-    /// The edited-files set and the most recent to-do list from the latest
-    /// transcript, or `nil` when there is no transcript at all.
-    /// - Note: Served from the incremental cache — steady-state polls cost
-    ///   O(appended bytes) and an unchanged file costs zero reads. The *first*
-    ///   call on a large existing session still parses the whole file once, so
-    ///   call off the main thread when sessions may be large.
+    /// The edited-files set from the latest transcript, or `nil` when there is no
+    /// transcript at all.
+    /// - Note: The *first* call on a large session parses the whole file, so call off the
+    ///   main thread.
     public func summary(for root: URL) -> AgentSummary? {
         cache.results(for: root, file: latestSessionFile(for: root)).summary
     }

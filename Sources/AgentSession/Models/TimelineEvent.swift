@@ -64,7 +64,9 @@ public struct TimelineEvent: Equatable, Sendable {
     /// The tokens one assistant MESSAGE reported, attached to the first event that message
     /// produced (a message is one model call; its text and tool blocks share the bill).
     public struct Usage: Equatable, Sendable {
+        /// Token counts by kind: fresh input, cache writes, cache reads, output.
         public let input: Int, cacheWrite: Int, cacheRead: Int, output: Int
+        /// One message's token counts.
         public init(input: Int, cacheWrite: Int, cacheRead: Int, output: Int) {
             self.input = input; self.cacheWrite = cacheWrite; self.cacheRead = cacheRead; self.output = output
         }
@@ -72,6 +74,7 @@ public struct TimelineEvent: Equatable, Sendable {
     /// The usage and the model of the message this event came from; nil for the message's
     /// later events and for user prompts. Summing a turn's events gives the turn's bill.
     public let usage: Usage?
+    /// The model id that message ran on, alongside `usage`.
     public let model: String?
     /// The agent's tool-call id (`tool_use.id`), so a later `tool_result` can be matched to it.
     public let toolUseID: String?
@@ -81,7 +84,9 @@ public struct TimelineEvent: Equatable, Sendable {
     /// end) — and whether the tool reported an error. Set after the call's event, when the
     /// result arrives in the next user message.
     public var result: String?
+    /// Whether the tool reported its `result` as an error.
     public var resultIsError: Bool = false
+    /// How many trailing characters of a tool result are kept.
     public static let resultCap = 6_000
 
     /// Creates a timeline entry.

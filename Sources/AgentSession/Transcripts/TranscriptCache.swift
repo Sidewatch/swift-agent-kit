@@ -16,41 +16,12 @@ import Darwin
 import Glibc
 #endif
 
-/// The incremental transcript cache behind ``ClaudeCodeAdapter``'s readers.
-///
-/// One entry per polled project root (keyed by `root.path`) mirrors that root's
-/// *current* transcript. Each entry stores the file identity it last observed
-/// (path + inode + size + mtime), the byte offset of the first line not yet
-/// folded into the durable ``TranscriptState``, and a memoized ``Snapshot`` of
-/// all three readers' results.
-///
-/// Poll algorithm (``results(for:file:)``):
-/// 1. `stat` the transcript. Identical path/inode/size/mtime → return the
-///    memoized snapshot: **zero file reads**.
-/// 2. Same file, size grew (the JSONL append case) → read only `[offset, size)`
-///    via POSIX `pread`, split on `\n`, fold the complete lines into the durable
-///    state, and advance the offset. An unterminated trailing line is *not*
-///    consumed: it is parsed tentatively into a copy of the state for this
-///    snapshot only (matching what a full re-parse would report right now) and
-///    is re-read on a later poll once completed — the stored offset never moves
-///    past an incomplete line.
-/// 3. Anything else — path changed (session rotation), inode changed (atomic
-///    rewrite), size shrank (truncation), or a same-size mtime change (in-place
-///    rewrite) — drops the entry and re-parses the whole file once.
-///
-/// Thread safety: every access runs under one `NSLock`; readers arrive from
-/// multiple background queues, and the first caller after an append performs
-/// the single shared parse while subsequent callers serve the memoized snapshot.
-///
-/// Lifetime: the cache is owned *by reference* by a ``ClaudeCodeAdapter`` value,
-/// so copies of one adapter share it and it lives exactly as long as the adapter
-/// (and its copies). Entries for roots whose transcript disappears are dropped.
-/// Per-entry memory is bounded: the events buffer is capped at 300, and the
-/// usage-dedupe / edited-files sets grow only with the session's message count.
-///
-/// - Note: Lines are parsed as raw bytes. A line that is not valid UTF-8/JSON is
-///   skipped individually (the pre-cache code rejected the *whole* file when it
-///   was not valid UTF-8 — JSONL is UTF-8 by spec, so this never mattered).
+/// The incremental transcript cache behind ``ClaudeCodeAdapter``'s readers: one entry per
+/// polled root mirrors its current transcript. Each poll `stat`s the file: unchanged → the
+/// memoized ``Snapshot`` (zero reads); grown → `pread` only the new bytes and fold complete
+/// lines into ``TranscriptState`` (an unterminated tail is parsed into a throwaway copy, and the
+/// offset never passes it); anything else (rotation, new inode, shrink, same-size rewrite) →
+/// one full re-parse. Every access is under one `NSLock`; a bad line is skipped on its own.
 final class TranscriptCache: @unchecked Sendable {
 
 

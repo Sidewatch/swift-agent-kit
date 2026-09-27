@@ -30,25 +30,16 @@ public protocol AgentAdapter: Sendable {
     /// The activity timeline for `root`, oldest first.
     func events(for root: URL) -> [TimelineEvent]
 
-    /// The activity timeline parsed from one session on disk, wherever it happens to live.
-    ///
-    /// An adapter does two separable jobs: *locating* an agent's transcript (which directory,
-    /// which session file, which is newest) and *parsing* it. This is the parsing half on its
-    /// own, and it's what makes an adapter developable against a checked-in fixture — so a new
-    /// agent's adapter can be written, tested and maintained **without installing that agent**.
-    /// `Sidewatch --dump-session <file>` is this method, headless.
-    ///
-    /// - Parameter url: A session in this agent's own format. Usually a transcript **file**
-    ///   (Claude, Codex), but some agents don't keep one: OpenCode stores a session as a
-    ///   **directory** of per-message JSON, so this deliberately takes a URL of either kind and
-    ///   lets the adapter decide what it means.
-    /// - Returns: The timeline, oldest first. Empty when the session is absent or unparseable —
-    ///   a session in the wrong format is not an error, just not this agent's.
+    /// The activity timeline parsed from one session on disk, wherever it lives — the parsing
+    /// half of an adapter without the locating half, so it can be tested against a checked-in
+    /// fixture. `url` is a transcript file or, for an agent that stores a session as a folder,
+    /// a directory; the adapter decides. Oldest first; empty when the session is absent or not
+    /// in this agent's format.
     func events(fromSession url: URL) -> [TimelineEvent]
 
     /// Token/cost telemetry for `root`, or `nil` when unavailable.
     func usage(for root: URL) -> AgentUsage?
 
-    /// The edited-files / to-dos roll-up for `root`, or `nil` when unavailable.
+    /// The edited-files roll-up for `root`, or `nil` when unavailable.
     func summary(for root: URL) -> AgentSummary?
 }

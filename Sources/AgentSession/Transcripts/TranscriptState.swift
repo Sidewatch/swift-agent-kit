@@ -196,7 +196,7 @@ struct TranscriptState {
     /// The activity timeline as the public API reports it (last 300, oldest first).
     var eventsResult: [TimelineEvent] { Array(events.suffix(Self.eventCap)) }
 
-    /// The edited-files / to-dos roll-up as the public API reports it.
+    /// The edited-files roll-up as the public API reports it.
     var summaryResult: AgentSummary { AgentSummary(editedFiles: edited) }
 
     // MARK: - Static helpers (shared parsing vocabulary)
@@ -234,8 +234,8 @@ struct TranscriptState {
         }
         guard let text = source else { return nil }
         // `isNewline`, never the Character "\n": a CRLF file keeps its endings in `new_string`,
-        // and "\r\n" is ONE Character in Swift, so a "\n" split never divided it — the anchor
-        // was the whole inserted text, which no single line can contain (18 Sep 2026).
+        // and "\r\n" is ONE Character in Swift, so a "\n" split never divides it and the anchor
+        // would be the whole inserted text, which no single line can contain.
         for raw in text.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline) {
             let t = raw.trimmingCharacters(in: .whitespacesAndNewlines)
             if t.count >= 4 { return String(t.prefix(200)) }
@@ -246,7 +246,7 @@ struct TranscriptState {
     /// The trimmed first line of `s`, truncated to `max` characters with an ellipsis.
     /// Internal (not private) so every adapter shares one truncation rule.
     static func firstLine(_ s: String, _ max: Int = 160) -> String {
-        // `isNewline`: "\r\n" is one Character, so a "\n" split kept a CRLF prompt whole.
+        // `isNewline`: "\r\n" is one Character, so a "\n" split would keep a CRLF prompt whole.
         let line = s.split(maxSplits: 1, omittingEmptySubsequences: true, whereSeparator: \.isNewline).first.map(String.init) ?? s
         let t = line.trimmingCharacters(in: .whitespacesAndNewlines)
         return t.count > max ? String(t.prefix(max)) + "…" : t
