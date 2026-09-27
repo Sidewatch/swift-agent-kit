@@ -62,4 +62,25 @@ final class AgentsResolveTests: XCTestCase {
         XCTAssertEqual(Agents.resolve(candidates: [terminalCwd, opened], in: adapters)?.root, terminalCwd)
         XCTAssertEqual(Agents.resolve(candidates: [opened, terminalCwd], in: adapters)?.root, opened)
     }
+
+    /// Several agents can work in one folder (a terminal each): the most recently active one is
+    /// read, unless the caller names the agent in the terminal the person is using.
+    func testSeveralAgentsInOneFolderResolveByPreferenceThenRecency() throws {
+        try recordSession(for: terminalCwd)
+        let claudeFile = projectDir(terminalCwd).appendingPathComponent("session.jsonl")
+        try FileManager.default.setAttributes([.modificationDate: Date().addingTimeInterval(-300)], ofItemAtPath: claudeFile.path)
+        let codexDay = projectsRoot.appendingPathComponent("codex/2026/09/27", isDirectory: true)
+        try FileManager.default.createDirectory(at: codexDay, withIntermediateDirectories: true)
+        let rollout = codexDay.appendingPathComponent("rollout-1.jsonl")
+        try #"{"type":"session_meta","payload":{"cwd":"CWD","source":"cli"}}"#
+            .replacingOccurrences(of: "CWD", with: terminalCwd.path).write(to: rollout, atomically: true, encoding: .utf8)
+        let adapters: [AgentAdapter] = [ClaudeCodeAdapter(projectsRoot: projectsRoot),
+                                        CodexAdapter(sessionsRoot: projectsRoot.appendingPathComponent("codex"))]
+
+        XCTAssertEqual(Agents.resolve(candidates: [terminalCwd], in: adapters)?.adapter.name, "Codex", "the newer session wins")
+        XCTAssertEqual(Agents.resolve(candidates: [terminalCwd], preferring: "Claude Code", in: adapters)?.adapter.name, "Claude Code",
+                       "the focused terminal's agent wins when it has a session there")
+        XCTAssertEqual(Agents.resolve(candidates: [terminalCwd], preferring: "Gemini", in: adapters)?.adapter.name, "Codex",
+                       "a preferred agent with no session falls back to the most recent")
+    }
 }

@@ -24,6 +24,11 @@ public protocol AgentAdapter: Sendable {
     /// A human-readable name for the agent, e.g. `"Claude Code"`.
     var name: String { get }
 
+    /// The agent's process names as terminal detection reports them (`TerminalStatus.agentName`
+    /// in swift-agent-status: `"claude"`, `"codex"`), so a terminal running the agent reads its
+    /// sessions.
+    var processNames: Set<String> { get }
+
     /// The agent's most recent session for `root` — a transcript file, or a folder for an agent
     /// that stores a session as one — or nil when it has none. Its modification date is how the
     /// most recently active of several agents is chosen.

@@ -29,6 +29,12 @@ public enum Agents {
     /// The adapter with this ``AgentAdapter/name``, if the library has one.
     public static func adapter(named name: String) -> AgentAdapter? { all.first { $0.name == name } }
 
+    /// The adapter that reads sessions for a detected agent process (`"codex"`), if any.
+    public static func adapter(forProcess process: String?) -> AgentAdapter? {
+        guard let process else { return nil }
+        return all.first { $0.processNames.contains(process) }
+    }
+
     /// The agent whose session for `root` was active most recently, with that session, or nil
     /// when no known agent has one. Several agents can work in one folder (a terminal each), so
     /// "which one" is the latest to write, not a fixed order.

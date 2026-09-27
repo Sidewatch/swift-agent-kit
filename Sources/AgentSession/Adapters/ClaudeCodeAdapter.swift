@@ -22,6 +22,9 @@ public struct ClaudeCodeAdapter: AgentAdapter {
     /// `"Claude Code"`.
     public let name = "Claude Code"
 
+    /// `claude`.
+    public let processNames: Set<String> = ["claude"]
+
     /// The `~/.claude/projects` container the adapter scans. Internal seam so
     /// tests can point the adapter at a temp directory instead of the real home.
     let projectsRoot: URL

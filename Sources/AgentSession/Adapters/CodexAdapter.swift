@@ -17,6 +17,9 @@ public struct CodexAdapter: AgentAdapter {
     /// `"Codex"`.
     public let name = "Codex"
 
+    /// `codex`.
+    public let processNames: Set<String> = ["codex"]
+
     private let index: CodexSessionIndex
     private let cache = TranscriptCache<CodexTranscriptState>()
 
