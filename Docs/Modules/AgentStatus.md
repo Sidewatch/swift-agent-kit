@@ -27,7 +27,7 @@ Extracted from Sidewatch. Recognises Claude Code, Codex, Gemini CLI, OpenCode, A
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/Sidewatch/swift-agent-status.git", from: "0.1.0")
+    .package(url: "https://github.com/Sidewatch/swift-agent-kit.git", from: "0.1.0")
 ]
 ```
 

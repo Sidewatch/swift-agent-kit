@@ -25,7 +25,7 @@ public protocol AgentAdapter: Sendable {
     var name: String { get }
 
     /// The agent's process names as terminal detection reports them (`TerminalStatus.agentName`
-    /// in swift-agent-status: `"claude"`, `"codex"`), so a terminal running the agent reads its
+    /// in AgentStatus: `"claude"`, `"codex"`), so a terminal running the agent reads its
     /// sessions.
     var processNames: Set<String> { get }
 

@@ -13,7 +13,7 @@ A tiny, dependency-free reader for terminal AI coding-agent session transcripts.
 - ✅ **Edited files** — the files a session wrote; `Agents.editedFiles(for:)` unions every agent's in a folder.
 - 🔎 **Several agents at once** — `Agents.resolve(candidates:preferring:)` reads the agent named (the one in the terminal in use) when it has a session there, else the most recently active; `Agents.adapter(forProcess:)` maps a terminal's process name to its reader.
 - 🧪 **Fully tested** — synthetic-transcript tests including malformed, truncated, and garbage input
-- 🪶 **Small** — Foundation plus two family packages (swift-foundation-extensions, swift-process-runner)
+- 🪶 **Small** — Foundation plus one family package, swift-foundation-extensions (its FoundationExtensions and ProcessRunner modules)
 
 ## Requirements
 
@@ -26,7 +26,7 @@ A tiny, dependency-free reader for terminal AI coding-agent session transcripts.
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/Sidewatch/swift-agent-session.git", from: "0.1.0")
+    .package(url: "https://github.com/Sidewatch/swift-agent-kit.git", from: "0.1.0")
 ]
 ```
 
