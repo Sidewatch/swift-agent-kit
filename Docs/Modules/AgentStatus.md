@@ -14,7 +14,7 @@ Extracted from Sidewatch. Recognises Claude Code, Codex, Gemini CLI, OpenCode, A
 - 🧱 **Build diagnostics from the scrollback** — `BuildDiagnostic.parse(_:)` reads ONE shape, `path:line[:col]: error|warning|note: message`, anchored so prose with a colon, a URL, a timestamp or a stack frame cannot match; `parseAll(_:)` keeps the LAST diagnostic per location (a build prints its history); `stripANSI(_:)` first, because compilers colour their output
 - 👀 **Screen-state fallback** — `ScreenStateClassifier.classify(rows)`: a numbered choice with a cursor, a y/n question, an explicit "Allow …?" → waiting; "esc to interrupt" → working; nil otherwise (the honest answer, most of the time)
 - 📋 **Value types** — `ForegroundInfo`, `TerminalAttention`, `ScreenState`; all `Sendable`
-- 🪶 **Zero dependencies** — Foundation only; colours and fonts are the host's
+- 🪶 **Small** — Foundation plus swift-foundation-extensions; colours and fonts are the host's
 
 ## Requirements
 
