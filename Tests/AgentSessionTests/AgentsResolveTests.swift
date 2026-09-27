@@ -83,4 +83,23 @@ final class AgentsResolveTests: XCTestCase {
         XCTAssertEqual(Agents.resolve(candidates: [terminalCwd], preferring: "Gemini", in: adapters)?.adapter.name, "Codex",
                        "a preferred agent with no session falls back to the most recent")
     }
+
+    /// Edits by every agent in the folder count, not just the latest one's.
+    func testEditedFilesAreEveryAgentsEdits() throws {
+        try FileManager.default.createDirectory(at: projectDir(terminalCwd), withIntermediateDirectories: true)
+        let claudeFile = projectDir(terminalCwd).appendingPathComponent("session.jsonl")
+        try #"{"type":"assistant","timestamp":"2026-09-27T10:00:00.000Z","message":{"model":"claude-opus-5-5","content":[{"type":"tool_use","id":"t1","name":"Write","input":{"file_path":"/w/claude.txt","content":"x"}}]}}"#
+            .appending("\n").write(to: claudeFile, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.modificationDate: Date().addingTimeInterval(-300)], ofItemAtPath: claudeFile.path)
+        let codexDay = projectsRoot.appendingPathComponent("codex/2026/09/27", isDirectory: true)
+        try FileManager.default.createDirectory(at: codexDay, withIntermediateDirectories: true)
+        try [#"{"type":"session_meta","payload":{"cwd":"CWD","source":"cli"}}"#,
+             #"{"type":"response_item","payload":{"type":"custom_tool_call","call_id":"c1","name":"apply_patch","input":"*** Begin Patch\n*** Add File: /w/codex.txt\n+x\n*** End Patch"}}"#]
+            .joined(separator: "\n").replacingOccurrences(of: "CWD", with: terminalCwd.path)
+            .write(to: codexDay.appendingPathComponent("rollout-1.jsonl"), atomically: true, encoding: .utf8)
+        let adapters: [AgentAdapter] = [ClaudeCodeAdapter(projectsRoot: projectsRoot),
+                                        CodexAdapter(sessionsRoot: projectsRoot.appendingPathComponent("codex"))]
+        XCTAssertEqual(Agents.editedFiles(for: terminalCwd, in: adapters), ["/w/claude.txt", "/w/codex.txt"])
+        XCTAssertEqual(Agents.editedFiles(for: opened, in: adapters), [], "no session, no edits")
+    }
 }

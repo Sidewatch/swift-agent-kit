@@ -48,6 +48,17 @@ public enum Agents {
             .max { $0.1 < $1.1 }?.0
     }
 
+    /// Every file any agent's latest session for `root` edited. Several agents can work in one
+    /// folder at once, so "did an agent write this?" asks all of them, not the latest.
+    public static func editedFiles(for root: URL) -> Set<String> {
+        editedFiles(for: root, in: all)
+    }
+
+    /// Test seam: ``editedFiles(for:)`` over an explicit adapter list.
+    static func editedFiles(for root: URL, in adapters: [AgentAdapter]) -> Set<String> {
+        adapters.reduce(into: Set<String>()) { $0.formUnion($1.summary(for: root)?.editedFiles ?? []) }
+    }
+
     /// The first of `candidates`, in order, that an agent has a session for — with that agent.
     /// Order candidates most specific first: the cwd of a terminal running an agent (an agent
     /// files its session under its OWN cwd at launch), then the opened folder, its repo root,
