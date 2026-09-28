@@ -104,11 +104,15 @@ public struct TimelineEvent: Equatable, Sendable {
     public static let fullTextCap = 20_000
     /// Who wrote a prompt; `.person` for every other entry.
     public let source: Source
+    /// For a prompt, what tells it apart from an identical one: its full timestamp, its message
+    /// id or its prompt number, whatever the agent records. It keys ``TurnBoundary/id``.
+    public let turnKey: String?
 
     /// Creates a timeline entry.
     public init(
         kind: Kind, title: String, detail: String, filePath: String?, timestamp: String, anchor: String? = nil, command: String? = nil,
-        usage: Usage? = nil, model: String? = nil, toolUseID: String? = nil, fullText: String? = nil, source: Source = .person
+        usage: Usage? = nil, model: String? = nil, toolUseID: String? = nil, fullText: String? = nil, source: Source = .person,
+        turnKey: String? = nil
     ) {
         self.kind = kind
         self.title = title
@@ -122,5 +126,6 @@ public struct TimelineEvent: Equatable, Sendable {
         self.toolUseID = toolUseID
         self.fullText = fullText.map { $0.count > Self.fullTextCap ? String($0.prefix(Self.fullTextCap)) + "…" : $0 }
         self.source = source
+        self.turnKey = turnKey
     }
 }

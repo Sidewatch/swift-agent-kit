@@ -108,18 +108,18 @@ struct ClaudeTranscriptState: TranscriptParsing {
     /// A user line as a prompt: the person's when `typed`; otherwise one Claude Code wrote
     /// itself (a finished task, a sub-agent's report) when it is recognisably that, as a turn of
     /// its own marked `.agent`; anything else (commands' output, meta lines) is not a turn.
-    private mutating func appendPrompt(_ raw: String, typed: Bool, ts: String) {
+    private mutating func appendPrompt(_ raw: String, typed: Bool, ts: String, key: String?) {
         if typed {
             let text = Self.unwrapped(raw)
             buffer.append(
                 TimelineEvent(
                     kind: .userPrompt, title: TranscriptText.promptTitle, detail: TranscriptText.firstLine(text),
-                    filePath: nil, timestamp: ts, fullText: text.trimmed))
+                    filePath: nil, timestamp: ts, fullText: text.trimmed, turnKey: key))
         } else if let title = ClaudeInjectedMessage.title(raw) {
             buffer.append(
                 TimelineEvent(
                     kind: .userPrompt, title: "Claude Code", detail: TranscriptText.firstLine(title),
-                    filePath: nil, timestamp: ts, fullText: raw.trimmed, source: .agent))
+                    filePath: nil, timestamp: ts, fullText: raw.trimmed, source: .agent, turnKey: key))
         }
     }
 
@@ -130,7 +130,9 @@ struct ClaudeTranscriptState: TranscriptParsing {
         if obj["type"] as? String == "queue-operation", obj["operation"] as? String == "remove",
             obj["reason"] as? String == "absorbed_mid_turn", let text = obj["content"] as? String
         {
-            appendPrompt(text, typed: ClaudeInjectedMessage.title(text) == nil, ts: TranscriptText.shortTime(obj["timestamp"] as? String))
+            appendPrompt(
+                text, typed: ClaudeInjectedMessage.title(text) == nil, ts: TranscriptText.shortTime(obj["timestamp"] as? String),
+                key: obj["timestamp"] as? String)
             return
         }
         guard let msg = obj["message"] as? [String: Any] else { return }
@@ -140,7 +142,7 @@ struct ClaudeTranscriptState: TranscriptParsing {
         if type == "user" {
             let typed = Self.isTypedByPerson(obj)
             if let s = msg["content"] as? String {
-                appendPrompt(s, typed: typed ?? !s.hasPrefix("<"), ts: ts)
+                appendPrompt(s, typed: typed ?? !s.hasPrefix("<"), ts: ts, key: obj["timestamp"] as? String)
             } else if let arr = msg["content"] as? [[String: Any]] {
                 // Tool results ride back on a user message: attach each to its call by id.
                 for block in arr where (block["type"] as? String) == "tool_result" {
@@ -156,7 +158,12 @@ struct ClaudeTranscriptState: TranscriptParsing {
                     buffer.attachResult(toolUseID: id, text: text, isError: (block["is_error"] as? Bool) ?? false)
                 }
                 let texts = arr.filter { ($0["type"] as? String) == "text" }.compactMap { $0["text"] as? String }
-                if !texts.isEmpty { appendPrompt(texts.joined(separator: " "), typed: typed ?? true, ts: ts) }
+                if !texts.isEmpty {
+                    // "[Request interrupted by user…]" is Claude Code's marker, written as a text block.
+                    let joined = texts.joined(separator: " ")
+                    appendPrompt(
+                        joined, typed: typed ?? !joined.hasPrefix("[Request interrupted by user"), ts: ts, key: obj["timestamp"] as? String)
+                }
             }
         } else if type == "assistant", let arr = msg["content"] as? [[String: Any]] {
             // The message's bill rides on its FIRST event only — one model call, one charge —

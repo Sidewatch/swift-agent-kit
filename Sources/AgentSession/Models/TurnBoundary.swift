@@ -29,6 +29,10 @@ public struct TurnBoundary: Equatable {
     /// The opening event's `HH:MM` timestamp, or `""` when unknown.
     public let timestamp: String
 
+    /// What tells the opening prompt apart from an identical one (``TimelineEvent/turnKey``):
+    /// its full timestamp, its message id, its prompt number. Nil when the agent gives none.
+    public let key: String?
+
     /// Creates a turn boundary.
     ///
     /// - Parameters:
@@ -36,25 +40,26 @@ public struct TurnBoundary: Equatable {
     ///   - end: Index of the final event in the turn.
     ///   - prompt: The opening prompt's text.
     ///   - timestamp: The opening event's timestamp.
-    public init(start: Int, end: Int, prompt: String, timestamp: String) {
+    ///   - key: What tells the prompt apart from an identical one, if the agent records it.
+    public init(start: Int, end: Int, prompt: String, timestamp: String, key: String? = nil) {
         self.start = start
         self.end = end
         self.prompt = prompt
         self.timestamp = timestamp
+        self.key = key
     }
 
     /// The number of events in the turn.
     public var count: Int { end - start + 1 }
 
-    /// A stable identifier for the turn: FNV-1a over its opening prompt and timestamp, stable
-    /// across relaunches and ref-name-safe. Must not be a position (`ClaudeTranscriptState` trims
-    /// events from the FRONT, shifting every index and orphaning persisted checkpoints) nor
-    /// `hashValue` (seeded per process).
-    /// - Note: The timestamp is only `HH:mm`, so two turns opened by the SAME text in the same
-    ///   minute share an id — accepted, since every alternative reintroduces position.
+    /// A stable identifier for the turn: FNV-1a over its opening prompt and its ``key`` (else its
+    /// `HH:MM` timestamp), stable across relaunches and ref-name-safe. Must not be a position
+    /// (`ClaudeTranscriptState` trims events from the FRONT, shifting every index and orphaning
+    /// persisted checkpoints) nor `hashValue` (seeded per process). Without a key, two turns opened
+    /// by the same text in the same minute — of any day — share an id; the key is what prevents it.
     public var id: String {
         var hash: UInt64 = 0xcbf2_9ce4_8422_2325
-        for byte in Array("\(timestamp)|\(prompt)".utf8) {
+        for byte in Array("\(key ?? timestamp)|\(prompt)".utf8) {
             hash ^= UInt64(byte)
             hash &*= 0x100_0000_01b3
         }
@@ -74,7 +79,7 @@ public struct TurnBoundary: Equatable {
             let end = position + 1 < starts.count ? starts[position + 1] - 1 : events.count - 1
             return TurnBoundary(
                 start: start, end: end,
-                prompt: events[start].detail, timestamp: events[start].timestamp)
+                prompt: events[start].detail, timestamp: events[start].timestamp, key: events[start].turnKey)
         }
     }
 

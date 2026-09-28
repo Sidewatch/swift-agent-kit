@@ -141,7 +141,7 @@ extension GeminiTranscriptState {
             entry.events = [
                 TimelineEvent(
                     kind: .userPrompt, title: TranscriptText.promptTitle, detail: TranscriptText.firstLine(text),
-                    filePath: nil, timestamp: ts, fullText: text)
+                    filePath: nil, timestamp: ts, fullText: text, turnKey: message["id"] as? String)
             ]
         case "gemini":
             let model = message["model"] as? String

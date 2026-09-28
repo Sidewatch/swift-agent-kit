@@ -26,6 +26,10 @@ struct GrokTranscriptState: TranscriptParsing {
     private var buffer = EventBuffer()
     /// Paths the session's edits named, as written (relative ones are the session cwd's).
     private var edited = Set<String>()
+    /// The last `prompt_index` seen and the interjections since: Grok records no timestamps, so
+    /// these are what tell two identical prompts apart (``TimelineEvent/turnKey``).
+    private var promptIndex = -1
+    private var interjections = 0
 
     // MARK: - Ingestion
 
@@ -38,7 +42,7 @@ struct GrokTranscriptState: TranscriptParsing {
             buffer.append(
                 TimelineEvent(
                     kind: .userPrompt, title: TranscriptText.promptTitle, detail: TranscriptText.firstLine(text),
-                    filePath: nil, timestamp: "", fullText: text))
+                    filePath: nil, timestamp: "", fullText: text, turnKey: turnKey(item)))
         case "assistant":
             let model = item["model_id"] as? String
             let text = (item["content"] as? String ?? "").trimmed
@@ -57,6 +61,18 @@ struct GrokTranscriptState: TranscriptParsing {
         default:
             break  // system prompt, reasoning
         }
+    }
+
+    /// A prompt's place in the session: `p3` for the fourth turn's prompt, `p3.i2` for the second
+    /// interjection typed during it.
+    private mutating func turnKey(_ item: [String: Any]) -> String {
+        if let index = item["prompt_index"] as? Int {
+            promptIndex = index
+            interjections = 0
+            return "p\(index)"
+        }
+        interjections += 1
+        return "p\(promptIndex).i\(interjections)"
     }
 
     /// A model tool call: an edit is the file it writes; a shell tool carries its command.

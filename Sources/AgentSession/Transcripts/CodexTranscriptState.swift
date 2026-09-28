@@ -54,7 +54,7 @@ struct CodexTranscriptState: TranscriptParsing {
             if let dir = payload["cwd"] as? String { cwd = dir }
             if let m = payload["model"] as? String, !m.isEmpty { model = m }
         case "response_item":
-            ingestResponseItem(payload, ts: ts)
+            ingestResponseItem(payload, ts: ts, key: obj["timestamp"] as? String)
         case "event_msg" where payload["type"] as? String == "token_count":
             ingestTokenCount(payload)
         default:
@@ -62,10 +62,10 @@ struct CodexTranscriptState: TranscriptParsing {
         }
     }
 
-    private mutating func ingestResponseItem(_ item: [String: Any], ts: String) {
+    private mutating func ingestResponseItem(_ item: [String: Any], ts: String, key: String?) {
         switch item["type"] as? String {
         case "message":
-            ingestMessage(item, ts: ts)
+            ingestMessage(item, ts: ts, key: key)
         case "function_call":
             ingestToolCall(
                 name: item["name"] as? String ?? "tool", arguments: item["arguments"] as? String,
@@ -92,7 +92,7 @@ struct CodexTranscriptState: TranscriptParsing {
     }
 
     /// A message: the person's prompt (unless Codex injected it), or the model's reply.
-    private mutating func ingestMessage(_ item: [String: Any], ts: String) {
+    private mutating func ingestMessage(_ item: [String: Any], ts: String, key: String?) {
         let content = item["content"] as? [[String: Any]] ?? []
         let texts = content.compactMap { $0["text"] as? String }
         switch item["role"] as? String {
@@ -102,7 +102,7 @@ struct CodexTranscriptState: TranscriptParsing {
             buffer.append(
                 TimelineEvent(
                     kind: .userPrompt, title: TranscriptText.promptTitle, detail: detail, filePath: nil, timestamp: ts,
-                    fullText: text.trimmed))
+                    fullText: text.trimmed, turnKey: key))
         case "assistant":
             let text = texts.joined(separator: "\n").trimmed
             guard !text.isEmpty else { return }
