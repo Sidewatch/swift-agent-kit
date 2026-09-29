@@ -53,7 +53,4 @@ struct EventBuffer {
         events[index].usage = usage
         if events[index].model == nil { events[index].model = model }
     }
-
-    /// The detail of the latest prompt, to recognise a format that records one prompt twice.
-    var latestPromptDetail: String? { events.last { $0.kind == .userPrompt }?.detail }
 }
