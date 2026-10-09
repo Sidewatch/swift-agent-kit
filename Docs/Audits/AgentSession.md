@@ -87,6 +87,89 @@ fails against the old code:
   session but has no span) and `mostActiveDay` (the local day with the most tokens, the earliest on a
   tie). `UsageSessionStatsTests`; mutants shortest-for-longest and least-for-most fail only that test.
 
+## Session lookup — 9 Oct 2026
+
+Where a project's transcript is and which one is live, from bugs reviewers measured on this machine. Each
+fix is pinned by a test that fails against the code before it (the mutant named), in a new file per topic.
+
+Measured first, before changing anything (43 transcripts under `~/.claude/projects`, read for their `type`
+and `cwd` fields only): every transcript's FIRST record is `type: mode` and carries no `cwd`; the first
+record that carries one is the 4th–6th line (`user` ×37, `attachment` ×1; 5 transcripts have none in
+their first 50 lines, sessions before their first prompt); in all 38 the per-UTF-16-unit fold of that `cwd`
+equals the folder name. The rule adopted is therefore "the `cwd` of the first record that carries one",
+not "the first record's `cwd`". No `-private-` or non-ASCII folder exists on this machine, so those setups
+are synthetic, built from the documented rule.
+
+- **A project under `/tmp`, `/var` or `/etc` was never found.** Claude Code folds the kernel's cwd,
+  `/private/tmp/proj` → `-private-tmp-proj`; `encode` folded `standardizedFileURL.path`, which strips
+  `/private` from an EXISTING path (keeps it for a nonexistent one, which is why the existing tests, all
+  on nonexistent `/private/tmp/…` roots, passed). Gemini's registry and Grok's bucket were keyed by the
+  cwd those agents saw and compared with the standardized path. Now `PathForms.of` gives every spelling
+  (as given, standardized, symlinks resolved, each with `/private` restored), `candidateEncodings` folds
+  each one as-is, NFC and NFD, and `ClaudeSessionLocator` reads EVERY existing candidate folder;
+  Codex, Gemini and Grok try every spelling. Pinned by `ProjectDirectoryFormsTests` (a real folder under
+  `/tmp`, a symlink, Codex/Gemini/Grok equivalents). Mutants: no `/private` restore → 4 tests fail; no
+  symlink resolution → 2 fail.
+- **An accented folder.** Foundation keeps a decomposed path decomposed (`URL(fileURLWithPath:)
+  .standardizedFileURL.path`, measured), so `Café` asked for as `Cafe\u{301}` folded to `Cafe-` and the
+  folder `Caf-` was missed. `candidateEncodings` folded three ways already but only `encode` was used.
+  Pinned by `testAnAccentedFolderIsFoundFromEitherUnicodeForm`. Mutant: fold one form only → fails.
+- **Two sessions in one folder flipped the reader every poll.** `latestSession` was the newest mtime,
+  so with two agents writing, each poll chose whichever wrote last, and the root-keyed `TranscriptCache`
+  saw every flip as a rotation: a full re-parse of a 40–110 MB transcript per poll. `SessionChoice` keeps
+  the chosen file while it is being written (its mtime advanced since the previous poll, or lies within
+  30 s) and lets a newer one take over once it has gone quiet; all four adapters use it, and the hit
+  carries the chosen transcript (`Agents.Hit.session`) so a host keys per-session state by it. Pinned by
+  `StableSessionChoiceTests` (alternating writes never flip; a quiet file yields once and the switch does
+  not reverse). Mutants: always the newest → 3 fail; no "advanced since the previous poll" rule → 1 fails.
+  Found on the way: a `URL` instance caches its resource values, so the held file's `modificationDate`
+  read through the same instance was stale and a growing file looked quiet — `SessionChoice` stats
+  through `FileStat` and answers a fresh `URL`.
+- **The cache is keyed by transcript path**, with the six least recently served kept, so a flip or a
+  `--resume` of another session is not a rotation of the first file's state, and switching back costs a
+  `stat`; a rewrite of the same file (new inode) still re-parses. Pinned by `TranscriptCacheByPathTests`.
+  Mutants: one entry at a time → 2 fail; no eviction → 1 fails.
+- **A session launched in a subfolder of the opened project was never found** (a Terminal.app agent in
+  `R/worker` while `R` is open): matching was exact. `Agents.resolve` now has a second tier: when no
+  candidate matches, `latestSessionRoot(under:)` looks for folders named `encode(project) + "-"` (every
+  spelling), confirms each transcript by its launch `cwd` lying beneath the project, and returns the
+  launch directory as the hit's `root`, so every other reader works unchanged. Searched beneath is
+  `under:` or, unnamed, the FIRST candidate — never a later one, because the opened folder's parent holds
+  other projects (the host's list is terminal cwds, opened folder, repo root, parent). The same `cwd`
+  check tells a colliding folder apart on an exact match (`/a/b.c` and `/a/b-c` share one folder; a
+  transcript with no `cwd` yet is accepted there and rejected beneath). Codex has the tier too (its index
+  is cwd-keyed); Gemini and Grok keep the protocol default (nil): their registry and bucket names would
+  have to be enumerated for prefixes, which no reviewer asked for. Pinned by `SubfolderSessionTests`.
+  Mutants: no second tier → 3 fail; search beneath the last candidate → 1 fails; no `cwd` check on an
+  exact match → 1 fails; descendant accepted without the `cwd` check → 1 fails; Codex by equality → 1 fails.
+- **Misses are remembered for 2 s** (`LookupMisses`, one per index): an idle poll with no session listed
+  Claude 1, Codex 4 (sessions, year, month, day), Gemini 2 (slug and legacy hash folders), Grok 1
+  directories per candidate — 8, and the host polls 4 candidates from 4 timers every 2 s: 128 listings
+  per 2 s, now at most 32 (each candidate once per adapter per interval). A hit is never remembered and
+  clears the miss. Pinned by `LookupMissMemoTests` (listing counts do not grow across two immediate
+  calls, for all four adapters). Mutant: a miss never fresh → 2 fail.
+- **A transcript before its first prompt** (a `mode` record only) already resolved as a session with no
+  turns; now pinned by `EmptySessionTests`, because the new `cwd` check could have broken it. Mutant: a
+  transcript with no `cwd` is not this root's → it and the four `AgentsResolveTests` fail.
+- **Vocabulary pins** (`TranscriptVocabularyTests`): the field is `cwd`, top-level, on the first record
+  that carries one, not remembered while absent; the folder is the kernel path folded per UTF-16 unit
+  (`Tëst_Prøjéct 2.0` → `T-st-Pr-j-ct-2-0`, an emoji → two dashes, an existing `/tmp` path keeps
+  `/private`). Mutants: another field name → 4 fail; the last `cwd` → 1 fails; fold per scalar → 1 fails.
+
+API: `Agents.resolve(candidates:preferring:under:)` returns `Agents.Hit` = `(adapter, root, session)` —
+source-compatible with `hit.adapter` / `hit.root`; `AgentAdapter.latestSessionRoot(under:)` is a new
+requirement with a default of nil; `latestSession(for:)` is documented stable. `Files` became
+`DirectoryReader` (listings counted); `ClaudeCodeAdapter.projectDir(for:)` became
+`projectDirectories(for:)`. Build clean under Swift 6, `swift format lint --strict` silent, 172 tests.
+
+A host follow-up, outside this package: pass the opened folder as `under:`; with no terminal running an
+agent the default (first candidate) is already the opened folder.
+
+### Known non-issue added
+
+- `contentsOfDirectory(at:)` returns `/private/var/…` for a folder created as `/var/…`; a test compares
+  `canonicalPath` (`Tests/AgentSessionTests/URL+CanonicalPath.swift`), never `path`.
+
 ## Known non-issues (do not "fix" these again)
 
 - `ClaudeQuotaCache.lastValue` has no caller in Sidewatch — public API, kept on purpose.
@@ -103,3 +186,4 @@ fails against the old code:
 - 18 Sep 2026 — `ClaudeKeychain` reads through the `security` tool first (no prompt); framework read as fallback.
 - 22 Sep 2026 — `TurnEffort` and `TurnBoundary.effort(in:)` / `plan(in:)` moved in from Sidewatch's `AgentTurnNode` (the outline row keeps only its drawing); `TurnEffortTests`. AGENTS.md re-mirrored from CLAUDE.md (it had drifted: Extensions, Monitoring and ClaudeQuota+Display were missing).
 - 24 Sep 2026 — `PersistedOutput` (`Support/`): a `<persisted-output>` tool result is read back from its `tool-results/` file's tail, so a test runner's summary survives the spill (`PersistedOutputTests`, four tests, one through the parser). The plan (`TimelineEvent.todos`, `TurnBoundary.plan(in:)`, `AgentSummary.todos`) is REMOVED: Claude Code 2.1.233 / 2.1.268 stopped offering TodoWrite and the task tools on Opus 4.8, Sonnet 5, Fable 5 and newer, and 0 of 368 transcripts on David's machine carry one.
+- 9 Oct 2026 — session lookup: every candidate folder (`/private`, symlinks, NFC/NFD), the chosen transcript held while written, path-keyed cache, subfolder search, misses remembered 2 s (see "Session lookup").

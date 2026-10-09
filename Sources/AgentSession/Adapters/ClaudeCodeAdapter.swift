@@ -25,42 +25,30 @@ public struct ClaudeCodeAdapter: AgentAdapter {
     /// `claude`.
     public let processNames: Set<String> = ["claude"]
 
-    /// The `~/.claude/projects` container the adapter scans. Internal seam so
-    /// tests can point the adapter at a temp directory instead of the real home.
-    let projectsRoot: URL
+    /// Finds the transcript under the `~/.claude/projects` container the adapter scans. A
+    /// reference type, so copies of this adapter share its memory of what they found.
+    let locator: ClaudeSessionLocator
 
     /// The incremental transcript cache backing the three readers. A reference
     /// type on purpose: copies of this adapter value share the one cache.
     private let cache = TranscriptCache<ClaudeTranscriptState>()
 
     /// Creates an adapter that reads the real `~/.claude/projects` container.
-    public init() {
-        self.projectsRoot = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".claude/projects", isDirectory: true)
-    }
+    public init() { self.init(projectsRoot: ClaudeSessionIndex.defaultProjectsRoot) }
 
     /// Test seam: read transcripts from an arbitrary projects container.
-    init(projectsRoot: URL) { self.projectsRoot = projectsRoot }
+    init(projectsRoot: URL) { locator = ClaudeSessionLocator(projectsRoot: projectsRoot) }
 
-    /// The latest `.jsonl` transcript Claude Code recorded for `root`.
-    public func latestSession(for root: URL) -> URL? { latestSessionFile(for: root) }
+    /// The `.jsonl` transcript Claude Code is writing for `root`: the newest among every project
+    /// directory the path may be filed under, held while it is still being written.
+    public func latestSession(for root: URL) -> URL? { locator.latestSession(for: root) }
 
-    // MARK: - Locating the transcript
+    /// The directory of the newest session launched in a subfolder of `project`, or nil.
+    public func latestSessionRoot(under project: URL) -> URL? { locator.latestSessionRoot(under: project) }
 
-    /// The `~/.claude/projects/<encoded-cwd>` directory for `root`, or `nil` when
-    /// Claude Code has never run there.
-    func projectDir(for root: URL) -> URL? {
-        // ONE encoding for the package: the measured per-UTF-16-unit fold in ClaudeSessionIndex.
-        let dir = projectsRoot.appendingPathComponent(ClaudeSessionIndex.encode(root), isDirectory: true)
-        return dir.isExistingDirectory ? dir : nil
-    }
-
-    /// The most recently modified `.jsonl` transcript in the project directory —
-    /// "the current session" — or `nil` when there is none.
-    func latestSessionFile(for root: URL) -> URL? {
-        guard let dir = projectDir(for: root) else { return nil }
-        return Files.newest(in: dir, extensions: ["jsonl"])
-    }
+    /// Every existing `~/.claude/projects/<encoded-cwd>` directory for `root`; empty when Claude
+    /// Code has never run there.
+    func projectDirectories(for root: URL) -> [URL] { locator.projectDirectories(for: root) }
 
     // MARK: - Readers (served from the incremental cache)
 
@@ -72,7 +60,7 @@ public struct ClaudeCodeAdapter: AgentAdapter {
     /// - Note: The *first* call on a large session parses the whole file, so call off the
     ///   main thread.
     public func usage(for root: URL) -> AgentUsage? {
-        cache.results(for: root, file: latestSessionFile(for: root)).usage
+        cache.results(for: latestSession(for: root)).usage
     }
 
     /// The activity timeline parsed from the latest transcript, oldest first, capped to the most
@@ -80,17 +68,14 @@ public struct ClaudeCodeAdapter: AgentAdapter {
     /// - Note: The *first* call on a large session parses the whole file, so call off the
     ///   main thread.
     public func events(for root: URL) -> [TimelineEvent] {
-        cache.results(for: root, file: latestSessionFile(for: root)).events
+        cache.results(for: latestSession(for: root)).events
     }
 
     /// The activity timeline parsed from one transcript file, bypassing the `~/.claude/projects`
     /// lookup entirely — the seam that lets this adapter be exercised against a checked-in
     /// fixture rather than a live session.
-    ///
-    /// Keyed in the cache by the file's own path (the cache's `root` parameter is only ever a
-    /// key), so a fixture parse can't collide with, or invalidate, a live poll of a project.
     public func events(fromSession url: URL) -> [TimelineEvent] {
-        cache.results(for: url, file: url).events
+        cache.results(for: url).events
     }
 
     /// The edited-files set from the latest transcript, or `nil` when there is no
@@ -98,7 +83,7 @@ public struct ClaudeCodeAdapter: AgentAdapter {
     /// - Note: The *first* call on a large session parses the whole file, so call off the
     ///   main thread.
     public func summary(for root: URL) -> AgentSummary? {
-        cache.results(for: root, file: latestSessionFile(for: root)).summary
+        cache.results(for: latestSession(for: root)).summary
     }
 
     // MARK: - Test seams

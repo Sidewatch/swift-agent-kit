@@ -17,6 +17,11 @@ import Foundation
 /// ``AgentAdapter`` to ``all``.
 public enum Agents {
 
+    /// An agent's session for a folder: the adapter to read it with, the folder it is filed
+    /// under (the agent's launch directory), and the transcript itself, whose path keys any
+    /// per-session state a host keeps.
+    public typealias Hit = (adapter: AgentAdapter, root: URL, session: URL)
+
     /// Every adapter known to the library. An agent is added only with sanitized transcripts from
     /// REAL runs to test against and its parser checked against the agent's own source — an
     /// adapter written from a published schema alone reports "no session" forever when the
@@ -46,8 +51,13 @@ public enum Agents {
 
     /// Test seam: ``active(for:)`` over an explicit adapter list.
     static func active(for root: URL, in adapters: [AgentAdapter]) -> AgentAdapter? {
-        adapters.compactMap { adapter in adapter.latestSession(for: root).map { (adapter, $0.modificationDate ?? .distantPast) } }
-            .max { $0.1 < $1.1 }?.0
+        activeHit(for: root, in: adapters)?.adapter
+    }
+
+    /// The most recently written session for `root` across `adapters`, with its agent.
+    private static func activeHit(for root: URL, in adapters: [AgentAdapter]) -> Hit? {
+        let hits: [Hit] = adapters.compactMap { adapter in adapter.latestSession(for: root).map { (adapter, root, $0) } }
+        return hits.max { ($0.session.modificationDate ?? .distantPast) < ($1.session.modificationDate ?? .distantPast) }
     }
 
     /// Every file any agent's latest session for `root` edited. Several agents can work in one
@@ -61,25 +71,44 @@ public enum Agents {
         adapters.reduce(into: Set<String>()) { $0.formUnion($1.summary(for: root)?.editedFiles ?? []) }
     }
 
-    /// The first of `candidates`, in order, that an agent has a session for — with that agent.
-    /// Order candidates most specific first: the cwd of a terminal running an agent (an agent
-    /// files its session under its OWN cwd at launch), then the opened folder, its repo root,
-    /// its parent. `preferring` names the agent to read when it has a session there — the one
-    /// running in the terminal the person is using — before falling back to the most recent.
-    public static func resolve(candidates: [URL], preferring agent: String? = nil) -> (adapter: AgentAdapter, root: URL)? {
-        resolve(candidates: candidates, preferring: agent, in: all)
+    /// The first of `candidates`, in order, that an agent has a session for — with that agent and
+    /// the session. Order candidates most specific first: the cwd of a terminal running an agent
+    /// (an agent files its session under its OWN cwd at launch), then the opened folder, its repo
+    /// root, its parent. `preferring` names the agent to read when it has a session there — the
+    /// one running in the terminal the person is using — before falling back to the most recent.
+    ///
+    /// When no candidate matches exactly, a session launched in a SUBFOLDER of `project` counts
+    /// (an agent started in a worktree or a package of the opened folder, from a terminal the
+    /// host cannot see): the hit's `root` is then that subfolder. `project` is the opened folder;
+    /// nil means the first candidate. Later candidates are never searched beneath — the opened
+    /// folder's parent holds other projects.
+    public static func resolve(candidates: [URL], preferring agent: String? = nil, under project: URL? = nil) -> Hit? {
+        resolve(candidates: candidates, preferring: agent, under: project, in: all)
     }
 
-    /// Test seam for ``resolve(candidates:preferring:)`` over an explicit adapter list.
-    static func resolve(candidates: [URL], preferring agent: String? = nil, in adapters: [AgentAdapter]) -> (
-        adapter: AgentAdapter, root: URL
-    )? {
+    /// Test seam for ``resolve(candidates:preferring:under:)`` over an explicit adapter list.
+    static func resolve(candidates: [URL], preferring agent: String? = nil, under project: URL? = nil, in adapters: [AgentAdapter])
+        -> Hit?
+    {
+        let preferred = agent.flatMap { name in adapters.first { $0.name == name } }
         for root in candidates {
-            if let agent, let preferred = adapters.first(where: { $0.name == agent }), preferred.hasSession(for: root) {
-                return (preferred, root)
-            }
-            if let adapter = active(for: root, in: adapters) { return (adapter, root) }
+            if let preferred, let session = preferred.latestSession(for: root) { return (preferred, root, session) }
+            if let hit = activeHit(for: root, in: adapters) { return hit }
         }
-        return nil
+        guard let project = project ?? candidates.first else { return nil }
+        return beneath(project, preferring: preferred, in: adapters)
+    }
+
+    /// The session launched in a subfolder of `project`: the preferred agent's when it has one,
+    /// else the most recently written.
+    private static func beneath(_ project: URL, preferring preferred: AgentAdapter?, in adapters: [AgentAdapter]) -> Hit? {
+        func hit(_ adapter: AgentAdapter) -> Hit? {
+            guard let root = adapter.latestSessionRoot(under: project) else { return nil }
+            return activeHit(for: root, in: [adapter])
+        }
+        if let preferred, let hit = hit(preferred) { return hit }
+        return adapters.compactMap(hit).max {
+            ($0.session.modificationDate ?? .distantPast) < ($1.session.modificationDate ?? .distantPast)
+        }
     }
 }

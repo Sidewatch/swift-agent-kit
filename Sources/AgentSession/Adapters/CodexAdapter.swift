@@ -20,7 +20,8 @@ public struct CodexAdapter: AgentAdapter {
     /// `codex`.
     public let processNames: Set<String> = ["codex"]
 
-    private let index: CodexSessionIndex
+    /// Finds the rollout; a reference type, so copies of this adapter share what it found.
+    let index: CodexSessionIndex
     private let cache = TranscriptCache<CodexTranscriptState>()
 
     /// An adapter over the real Codex home (`$CODEX_HOME`, else `~/.codex`).
@@ -36,11 +37,13 @@ public struct CodexAdapter: AgentAdapter {
 
     public func latestSession(for root: URL) -> URL? { index.latestRollout(for: root) }
 
-    public func events(for root: URL) -> [TimelineEvent] { cache.results(for: root, file: latestSession(for: root)).events }
+    public func latestSessionRoot(under project: URL) -> URL? { index.latestSessionRoot(under: project) }
 
-    public func events(fromSession url: URL) -> [TimelineEvent] { cache.results(for: url, file: url).events }
+    public func events(for root: URL) -> [TimelineEvent] { cache.results(for: latestSession(for: root)).events }
 
-    public func usage(for root: URL) -> AgentUsage? { cache.results(for: root, file: latestSession(for: root)).usage }
+    public func events(fromSession url: URL) -> [TimelineEvent] { cache.results(for: url).events }
 
-    public func summary(for root: URL) -> AgentSummary? { cache.results(for: root, file: latestSession(for: root)).summary }
+    public func usage(for root: URL) -> AgentUsage? { cache.results(for: latestSession(for: root)).usage }
+
+    public func summary(for root: URL) -> AgentSummary? { cache.results(for: latestSession(for: root)).summary }
 }

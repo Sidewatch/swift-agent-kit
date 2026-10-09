@@ -41,11 +41,18 @@ import AgentSession
 let root = URL(fileURLWithPath: "/path/to/project")
 
 // Which agent has a session here? The most recently active one; name an agent to prefer it
-// (the one running in the terminal the person is using — "codex" from a process name).
+// (the one running in the terminal the person is using — "codex" from a process name). Order
+// candidates most specific first: a terminal's cwd, the opened folder, its repo root, its parent.
+// When none matches exactly, a session launched in a SUBFOLDER of the project (`under:`, the
+// first candidate when not named) counts, and `hit.root` is that subfolder.
 let preferred = Agents.adapter(forProcess: "codex")?.name
-if let hit = Agents.resolve(candidates: [root], preferring: preferred) {
+if let hit = Agents.resolve(candidates: [root], preferring: preferred, under: root) {
     let agent = hit.adapter, root = hit.root
     print(agent.name)   // e.g. Claude Code
+
+    // The transcript being read. With two sessions in one folder it stays the one being written
+    // until that has been quiet for 30 s, so its path can key per-session state.
+    print(hit.session.path)
 
     // The activity timeline, oldest first (the most recent 2,000 events).
     for event in agent.events(for: root) {

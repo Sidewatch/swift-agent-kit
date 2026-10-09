@@ -67,20 +67,14 @@ public final class ClaudeSessionIndex: @unchecked Sendable {
     /// `T-st-Pr-j-ct-2-0` — every UTF-16 unit outside ASCII `[A-Za-z0-9]` becomes `-`.
     public static func encode(_ url: URL) -> String { fold(url.standardizedFileURL.path) }
 
-    /// Every encoding the session's transcript folder could plausibly carry for `url`:
-    /// - Unicode: an `é` can live on disk precomposed (one unit → one `-`) or decomposed
-    ///   (`e` + combining accent → `e-`), and Foundation re-normalizes URLs behind your back,
-    ///   so fold as-is, NFC and NFD.
-    /// - `/private`: `standardizedFileURL` strips `/private` from `/tmp`, `/var`, `/etc`, but the
-    ///   kernel-reported cwd Claude encodes carries it — so both spellings are candidates.
+    /// Every encoding the session's transcript folder could plausibly carry for `url`: each
+    /// spelling of its path (`PathForms`: as given, standardized, symlinks resolved, `/private`
+    /// restored — Claude encodes the kernel's cwd), folded as-is, NFC and NFD, because an `é`
+    /// can live on disk precomposed (one unit → one `-`) or decomposed (`e` + combining accent →
+    /// `e-`) and Foundation re-normalizes URLs behind your back.
     public static func candidateEncodings(of url: URL) -> Set<String> {
-        let path = url.standardizedFileURL.path
-        var spellings = [path]
-        for base in ["/tmp", "/var", "/etc"] where path == base || path.hasPrefix(base + "/") {
-            spellings.append("/private" + path)
-        }
         var out = Set<String>()
-        for s in spellings {
+        for s in PathForms.of(url) {
             out.insert(fold(s))
             out.insert(fold(s.precomposedStringWithCanonicalMapping))
             out.insert(fold(s.decomposedStringWithCanonicalMapping))

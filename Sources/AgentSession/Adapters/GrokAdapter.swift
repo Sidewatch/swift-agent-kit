@@ -22,7 +22,8 @@ public struct GrokAdapter: AgentAdapter {
     /// `grok`.
     public let processNames: Set<String> = ["grok"]
 
-    private let index: GrokSessionIndex
+    /// Finds the session; a reference type, so copies of this adapter share what it found.
+    let index: GrokSessionIndex
     private let cache = TranscriptCache<GrokTranscriptState>()
 
     /// An adapter over the real Grok home (`$GROK_HOME`, else `~/.grok`).
@@ -39,14 +40,14 @@ public struct GrokAdapter: AgentAdapter {
     public func latestSession(for root: URL) -> URL? { index.latestSession(for: root) }
 
     public func events(for root: URL) -> [TimelineEvent] {
-        cache.results(for: root, file: latestSession(for: root)).events.map { SessionPaths.resolved($0, in: root) }
+        cache.results(for: latestSession(for: root)).events.map { SessionPaths.resolved($0, in: root) }
     }
 
-    public func events(fromSession url: URL) -> [TimelineEvent] { cache.results(for: url, file: url).events }
+    public func events(fromSession url: URL) -> [TimelineEvent] { cache.results(for: url).events }
 
     public func usage(for root: URL) -> AgentUsage? { latestSession(for: root).flatMap(GrokSessionIndex.usage(ofSession:)) }
 
     public func summary(for root: URL) -> AgentSummary? {
-        SessionPaths.resolved(cache.results(for: root, file: latestSession(for: root)).summary, in: root)
+        SessionPaths.resolved(cache.results(for: latestSession(for: root)).summary, in: root)
     }
 }

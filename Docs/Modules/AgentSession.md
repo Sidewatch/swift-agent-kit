@@ -11,7 +11,7 @@ A reader for terminal AI coding-agent session transcripts. It maps an agent's on
 - 🕘 **Activity timeline** — prompts, assistant prose, tool calls, and file edits, with local-clock `HH:MM` timestamps
 - 💰 **Telemetry** — context fill % (`AgentUsage.contextPercent`), output tokens, and estimated USD cost, deduplicated per API response
 - ✅ **Edited files** — the files a session wrote; `Agents.editedFiles(for:)` unions every agent's in a folder.
-- 🔎 **Several agents at once** — `Agents.resolve(candidates:preferring:)` reads the agent named (the one in the terminal in use) when it has a session there, else the most recently active; `Agents.adapter(forProcess:)` maps a terminal's process name to its reader.
+- 🔎 **Several agents at once** — `Agents.resolve(candidates:preferring:under:)` reads the agent named (the one in the terminal in use) when it has a session there, else the most recently active, and falls back to a session launched in a subfolder of the project; the hit carries the adapter, the session's folder and the transcript. `Agents.adapter(forProcess:)` maps a terminal's process name to its reader.
 - 🧪 **Fully tested** — synthetic-transcript tests including malformed, truncated, and garbage input
 - 🪶 **Small** — Foundation plus one family package, swift-foundation-extensions (its FoundationExtensions and ProcessRunner modules)
 
@@ -38,11 +38,18 @@ import AgentSession
 let root = URL(fileURLWithPath: "/path/to/project")
 
 // Which agent has a session here? The most recently active one; name an agent to prefer it
-// (the one running in the terminal the person is using — "codex" from a process name).
+// (the one running in the terminal the person is using — "codex" from a process name). Order
+// candidates most specific first: a terminal's cwd, the opened folder, its repo root, its parent.
+// When none matches exactly, a session launched in a SUBFOLDER of the project (`under:`, the
+// first candidate when not named) counts, and `hit.root` is that subfolder.
 let preferred = Agents.adapter(forProcess: "codex")?.name
-if let hit = Agents.resolve(candidates: [root], preferring: preferred) {
+if let hit = Agents.resolve(candidates: [root], preferring: preferred, under: root) {
     let agent = hit.adapter, root = hit.root
     print(agent.name)   // e.g. Claude Code
+
+    // The transcript being read. With two sessions in one folder it stays the one being written
+    // until that has been quiet for 30 s, so its path can key per-session state.
+    print(hit.session.path)
 
     // The activity timeline, oldest first (the most recent 2,000 events).
     for event in agent.events(for: root) {
@@ -78,6 +85,7 @@ struct MyAgentAdapter: AgentAdapter {
     var name: String { "My Agent" }
     var processNames: Set<String> { ["myagent"] }
     func latestSession(for root: URL) -> URL? { /* … */ }
+    func latestSessionRoot(under project: URL) -> URL? { nil }   // optional: a session in a subfolder of the project
     func events(for root: URL) -> [TimelineEvent] { /* … */ }
     func events(fromSession url: URL) -> [TimelineEvent] { /* … */ }
     func usage(for root: URL) -> AgentUsage? { /* … */ }
@@ -91,7 +99,8 @@ struct MyAgentAdapter: AgentAdapter {
 ## Notes
 
 - All calls are **synchronous** file reads over the newest transcript. When sessions may be large, dispatch them off the main queue.
-- Only the **latest session** (most recently modified) per project and agent is read.
+- One session per project and agent is read: the newest, **held while it is being written** (its modification date advanced since the previous poll, or lies within 30 s), so two agents in one folder do not flip the reader between their transcripts; a newer transcript takes over once the held one has gone quiet. Each transcript's parse state is cached by its path, so the switch back costs a `stat`.
+- Claude Code files a session under the **kernel's spelling of its launch directory** — `/private/tmp/…` for `/tmp`, symlinks resolved, the folder name's own Unicode form — folded per UTF-16 unit to `[A-Za-z0-9-]`. Every spelling of a path is tried, and a transcript's own `cwd` (the first record carrying one) tells paths that fold alike (`/a/b.c`, `/a/b-c`) apart and confirms a subfolder's session. A lookup that finds nothing is believed for 2 s, so idle polling does not relist directories every tick.
 - Grok's cost is the one Grok Build records itself (`usage.json`). Codex and Gemini sessions show tokens and no cost rather than a guessed price. Claude costs are **estimates**, at Anthropic's published API list prices per model generation (`ModelPricing` cites the page): Fable 5.1 and 5, Opus 4.5 and later against 4.1 and earlier, Sonnet 5 against 4.x, Haiku 4.5 against 3.5, at the 5-minute cache-write tier with no discounts. A subscription plan is not billed per token, so the figure is what the same tokens would cost at list. Repeated JSONL lines for the same API response are counted once.
 - `ClaudeKeychain` reads Claude Code's OAuth item through Apple's `security` tool first — the item's partition list is `apple-tool:`, so that read is silent and fresh on every call, where a Security-framework read from a GitHub-signed app prompts for the login password and "Always Allow" is forgotten at the next token refresh — and falls back to the framework.
 - `ClaudeQuota` reads both shapes of `/api/oauth/usage`: the `limits` array (where a per-model weekly cap such as Fable's lives, with the top-level `seven_day_<model>` keys null) and the older top-level windows. `spend` (or the older `extra_usage`) becomes `ClaudeQuota.Spend`, money in the account's own currency, and `seven_day_breakdown` becomes `weekShares`.

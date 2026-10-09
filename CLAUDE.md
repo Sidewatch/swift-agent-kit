@@ -10,11 +10,11 @@ Terminal AI coding agents, read from the outside: what a terminal's agent is doi
 ## AgentSession — `Sources/AgentSession`
 
 ### Module map
-- `Adapters/` — the engine: adapters: Agents (registry, `resolve(candidates:preferring:)`, `editedFiles`), ClaudeCodeAdapter, CodexAdapter, GeminiAdapter, GrokAdapter
+- `Adapters/` — the engine: adapters: Agents (registry, `resolve(candidates:preferring:under:)` → `Hit` (adapter, root, session), `editedFiles`), ClaudeCodeAdapter, CodexAdapter, GeminiAdapter, GrokAdapter
 - `Monitoring/` — the engine: monitoring: BurnDetector (loop detection over a timeline)
 - `Models/` — value types — the shape of a thing, nothing else: AgentSummary, AgentUsage, ClaudeCredentials, ClaudeQuota, ClaudeQuota+Display, TimelineEvent, TurnBoundary, TurnEffort (+Display: `modelLabel`, `costLabel`, `shortModel`), UsageReport
 - `Protocols/` — protocols the module exposes: AgentAdapter
-- `Support/` — pure helpers: ApplyPatch, ClaudeKeychain, ClaudeSessionIndex, CodexSessionIndex, GeminiSessionIndex, GrokSessionIndex (+ its usage sidecars), SessionPaths, ClockFormat, Files, FileStat, ISOTimestamp, JSONFile, PersistedOutput, TranscriptText
+- `Support/` — pure helpers: ApplyPatch, ClaudeKeychain, ClaudeSessionIndex (the folder encoding), ClaudeSessionLocator (which transcript is a project's: every candidate folder, the launch `cwd` check, subfolder search), CodexSessionIndex, GeminiSessionIndex, GrokSessionIndex (+ its usage sidecars), PathForms (every spelling of a cwd: `/private`, symlinks), SessionChoice (the chosen transcript is held while it is written), LookupMisses (a miss is believed 2 s), DirectoryReader (counted listings), SessionPaths, ClockFormat, FileStat, ISOTimestamp, JSONFile, PersistedOutput, TranscriptText
 - `Transcripts/` — the engine: transcripts: TranscriptParsing (one line-at-a-time state per format), TranscriptCache (incremental reads), EventBuffer (the bounded timeline), ClaudeTranscriptState, CodexTranscriptState, GeminiTranscriptState, GrokTranscriptState
 - `Tests/AgentSessionTests/Fixtures/` — sanitized real transcripts per agent; `NOTICE.md` records where each came from and which source each parser was checked against
 - `Usage/` — the engine: usage: ClaudeQuotaCache, ClaudeUsageEndpoint, ModelPricing, UsageAggregator, UsageRecord, UsageTotals

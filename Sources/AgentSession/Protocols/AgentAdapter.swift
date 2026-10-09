@@ -29,10 +29,17 @@ public protocol AgentAdapter: Sendable {
     /// sessions.
     var processNames: Set<String> { get }
 
-    /// The agent's most recent session for `root` — a transcript file, or a folder for an agent
-    /// that stores a session as one — or nil when it has none. Its modification date is how the
-    /// most recently active of several agents is chosen.
+    /// The agent's live session for `root` — a transcript file, or a folder for an agent that
+    /// stores a session as one — or nil when it has none. Its modification date is how the most
+    /// recently active of several agents is chosen. The answer is stable across polls: with two
+    /// sessions in one folder, the one being written is kept until it goes quiet, so a host can
+    /// key per-session state by this path.
     func latestSession(for root: URL) -> URL?
+
+    /// The folder of the agent's newest session launched in a SUBFOLDER of `project` (an agent
+    /// started in a worktree or a package of the opened project), or nil when there is none or
+    /// the agent cannot tell. The session itself is then ``latestSession(for:)`` of that folder.
+    func latestSessionRoot(under project: URL) -> URL?
 
     /// The activity timeline for `root`, oldest first.
     func events(for root: URL) -> [TimelineEvent]
@@ -54,4 +61,7 @@ public protocol AgentAdapter: Sendable {
 public extension AgentAdapter {
     /// Whether this agent has a recorded session for `root`.
     func hasSession(for root: URL) -> Bool { latestSession(for: root) != nil }
+
+    /// Nil: an adapter that files sessions only by exact folder cannot look beneath one.
+    func latestSessionRoot(under project: URL) -> URL? { nil }
 }

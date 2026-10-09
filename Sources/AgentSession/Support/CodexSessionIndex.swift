@@ -15,6 +15,8 @@ import Foundation
 /// each rollout's first line (`session_meta.cwd`) — once per file, then remembered — and only the
 /// most recent day folders are listed on a poll. A sub-agent's rollout (a `source` that is not a
 /// plain string) shares its parent's directory and is skipped: the parent is the conversation.
+/// The rollout chosen is held while it is being written (``SessionChoice``); a miss is
+/// remembered briefly (``LookupMisses``).
 final class CodexSessionIndex: @unchecked Sendable {
     /// How many day folders, newest first, a lookup lists.
     static let daysScanned = 14
@@ -22,6 +24,10 @@ final class CodexSessionIndex: @unchecked Sendable {
     static let metaReadLimit = 512 * 1024
 
     private let sessionsRoot: URL
+    /// Lists folders; its count is the test seam proving a remembered miss lists nothing.
+    let reader = DirectoryReader()
+    private let choice = SessionChoice()
+    private let misses = LookupMisses()
     private let lock = NSLock()
     /// Rollout path → its working directory (nil for a sub-agent's or an unreadable one).
     private var cwdByPath: [String: String?] = [:]
@@ -29,27 +35,41 @@ final class CodexSessionIndex: @unchecked Sendable {
     /// An index over `sessionsRoot` (`$CODEX_HOME/sessions`, default `~/.codex/sessions`).
     init(sessionsRoot: URL) { self.sessionsRoot = sessionsRoot }
 
-    /// The newest top-level rollout whose working directory is `root`, or nil.
+    /// The top-level rollout being written for `root`, or nil.
     func latestRollout(for root: URL) -> URL? {
-        let want = root.standardizedFileURL.path
-        var best: (url: URL, date: Date)?
+        let spellings = PathForms.of(root)
+        return misses.remembering(root.path) {
+            choice.choose(
+                for: root.path,
+                newest: newestRollout { spellings.contains($0) || spellings.contains(URL(fileURLWithPath: $0).standardizedFileURL.path) }?
+                    .url)
+        }
+    }
+
+    /// The working directory of the newest rollout started in a subfolder of `project`, or nil.
+    func latestSessionRoot(under project: URL) -> URL? {
+        let parents = PathForms.of(project).map { $0 + "/" }
+        return misses.remembering("under:" + project.path) {
+            newestRollout { cwd in parents.contains { cwd.hasPrefix($0) } }.map { URL(fileURLWithPath: $0.cwd, isDirectory: true) }
+        }
+    }
+
+    /// The newest top-level rollout whose working directory `accepts`, with that directory.
+    private func newestRollout(where accepts: (String) -> Bool) -> (url: URL, cwd: String)? {
+        var best: (url: URL, cwd: String, date: Date)?
         for day in recentDayFolders() {
-            guard
-                let files = try? FileManager.default.contentsOfDirectory(at: day, includingPropertiesForKeys: [.contentModificationDateKey])
-            else { continue }
-            for file in files where file.lastPathComponent.hasPrefix("rollout-") && file.pathExtension == "jsonl" {
-                guard workingDirectory(of: file) == want else { continue }
-                let date = file.modificationDate ?? .distantPast
-                if best.map({ date > $0.date }) ?? true { best = (file, date) }
+            for file in reader.dated(in: day, extensions: ["jsonl"]) where file.url.lastPathComponent.hasPrefix("rollout-") {
+                guard let cwd = workingDirectory(of: file.url), accepts(cwd) else { continue }
+                if best.map({ file.date > $0.date }) ?? true { best = (file.url, cwd, file.date) }
             }
         }
-        return best?.url
+        return best.map { ($0.url, $0.cwd) }
     }
 
     /// The `YYYY/MM/DD` folders, newest first, at most ``daysScanned`` of them.
     private func recentDayFolders() -> [URL] {
         func numbered(_ dir: URL) -> [URL] {
-            ((try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? [])
+            (reader.contents(of: dir) ?? [])
                 .filter { Int($0.lastPathComponent) != nil }
                 .sorted { $0.lastPathComponent > $1.lastPathComponent }
         }
@@ -84,6 +104,6 @@ final class CodexSessionIndex: @unchecked Sendable {
             let payload = obj["payload"] as? [String: Any], payload["source"] is String || payload["source"] == nil,
             let cwd = payload["cwd"] as? String
         else { return nil }
-        return URL(fileURLWithPath: cwd).standardizedFileURL.path
+        return cwd
     }
 }

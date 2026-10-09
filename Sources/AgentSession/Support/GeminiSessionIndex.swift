@@ -14,12 +14,18 @@ import Foundation
 /// Finds the newest Gemini CLI session for a project. Gemini files a project's chats under
 /// `<runtime>/tmp/<id>/chats/session-*.jsonl` (`packages/core/src/config/storage.ts`), where the id
 /// is the project's slug from `<runtime>/projects.json` (`projectRegistry.ts`) or, before the
-/// registry, the SHA-256 of the project path. A sub-agent's chat sits in a folder under `chats/`
-/// and is not the conversation.
+/// registry, the SHA-256 of the project path. The registry is keyed by the cwd Gemini saw, so every
+/// spelling of the path (``PathForms``) is looked up. A sub-agent's chat sits in a folder under
+/// `chats/` and is not the conversation. The session chosen is held while it is being written
+/// (``SessionChoice``); a miss is remembered briefly (``LookupMisses``).
 final class GeminiSessionIndex: @unchecked Sendable {
     /// The runtime folders a session may live under: `$GEMINI_CLI_HOME/.gemini` (default
     /// `~/.gemini`), and `~/.cache/.gemini`, where a Seatbelt-sandboxed run writes.
     private let runtimeRoots: [URL]
+    /// Lists folders; its count is the test seam proving a remembered miss lists nothing.
+    let reader = DirectoryReader()
+    private let choice = SessionChoice()
+    private let misses = LookupMisses()
     private let lock = NSLock()
     /// Each registry's projects (path → slug), with the modification date it was read at.
     private var registries: [String: (date: Date?, projects: [String: String])] = [:]
@@ -27,24 +33,23 @@ final class GeminiSessionIndex: @unchecked Sendable {
     /// An index over the given runtime folders.
     init(runtimeRoots: [URL]) { self.runtimeRoots = runtimeRoots }
 
-    /// The newest top-level session file for `root`, or nil.
+    /// The top-level session file being written for `root`, or nil.
     func latestSession(for root: URL) -> URL? {
-        let path = root.standardizedFileURL.path
-        var best: (url: URL, date: Date)?
+        misses.remembering(root.path) { choice.choose(for: root.path, newest: newestSession(for: root)) }
+    }
+
+    /// The newest top-level `session-*.jsonl` across every folder a spelling of `root` maps to.
+    private func newestSession(for root: URL) -> URL? {
+        let spellings = PathForms.of(root)
+        var sessions: [(url: URL, date: Date)] = []
         for runtime in runtimeRoots {
-            for id in Set([projects(in: runtime)[path], Self.legacyID(path)].compactMap { $0 }) {
+            let registry = projects(in: runtime)
+            for id in Set(spellings.flatMap { [registry[$0], Self.legacyID($0)].compactMap { $0 } }) {
                 let chats = runtime.appendingPathComponent("tmp/\(id)/chats", isDirectory: true)
-                guard
-                    let files = try? FileManager.default.contentsOfDirectory(
-                        at: chats, includingPropertiesForKeys: [.contentModificationDateKey])
-                else { continue }
-                for file in files where file.lastPathComponent.hasPrefix("session-") && file.pathExtension == "jsonl" {
-                    let date = file.modificationDate ?? .distantPast
-                    if best.map({ date > $0.date }) ?? true { best = (file, date) }
-                }
+                sessions += reader.dated(in: chats, extensions: ["jsonl"]).filter { $0.url.lastPathComponent.hasPrefix("session-") }
             }
         }
-        return best?.url
+        return DirectoryReader.newest(sessions)
     }
 
     /// A registry's projects, re-read only when `projects.json` changes.

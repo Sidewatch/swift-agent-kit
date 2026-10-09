@@ -57,6 +57,6 @@ final class ClaudeSessionIndexTests: XCTestCase {
         let cwd = URL(fileURLWithPath: "/Users/x/T\u{EB}st 2.0")
         try FileManager.default.createDirectory(
             at: root.appendingPathComponent(ClaudeSessionIndex.encode(cwd)), withIntermediateDirectories: true)
-        XCTAssertNotNil(ClaudeCodeAdapter(projectsRoot: root).projectDir(for: cwd), "one fold for the package, not two")
+        XCTAssertFalse(ClaudeCodeAdapter(projectsRoot: root).projectDirectories(for: cwd).isEmpty, "one fold for the package, not two")
     }
 }

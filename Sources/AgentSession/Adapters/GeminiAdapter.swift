@@ -22,7 +22,8 @@ public struct GeminiAdapter: AgentAdapter {
     /// `gemini`.
     public let processNames: Set<String> = ["gemini"]
 
-    private let index: GeminiSessionIndex
+    /// Finds the session; a reference type, so copies of this adapter share what it found.
+    let index: GeminiSessionIndex
     private let cache = TranscriptCache<GeminiTranscriptState>()
 
     /// An adapter over the real Gemini runtime folders: `$GEMINI_CLI_HOME/.gemini` (default
@@ -42,15 +43,15 @@ public struct GeminiAdapter: AgentAdapter {
     public func latestSession(for root: URL) -> URL? { index.latestSession(for: root) }
 
     public func events(for root: URL) -> [TimelineEvent] {
-        cache.results(for: root, file: latestSession(for: root)).events.map { SessionPaths.resolved($0, in: root) }
+        cache.results(for: latestSession(for: root)).events.map { SessionPaths.resolved($0, in: root) }
     }
 
-    public func events(fromSession url: URL) -> [TimelineEvent] { cache.results(for: url, file: url).events }
+    public func events(fromSession url: URL) -> [TimelineEvent] { cache.results(for: url).events }
 
-    public func usage(for root: URL) -> AgentUsage? { cache.results(for: root, file: latestSession(for: root)).usage }
+    public func usage(for root: URL) -> AgentUsage? { cache.results(for: latestSession(for: root)).usage }
 
     public func summary(for root: URL) -> AgentSummary? {
         // Gemini's edit tools take a path relative to the project root (`tools/edit.ts`).
-        SessionPaths.resolved(cache.results(for: root, file: latestSession(for: root)).summary, in: root)
+        SessionPaths.resolved(cache.results(for: latestSession(for: root)).summary, in: root)
     }
 }

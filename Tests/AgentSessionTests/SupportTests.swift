@@ -29,8 +29,12 @@ final class SupportTests: XCTestCase {
         try "c".write(to: other, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSinceNow: -60)], ofItemAtPath: old.path)
         try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSinceNow: +60)], ofItemAtPath: other.path)
-        XCTAssertEqual(Files.newest(in: d, extensions: ["jsonl"])?.lastPathComponent, "new.jsonl", "the .txt is newer but not a candidate")
-        XCTAssertNil(Files.newest(in: d.appendingPathComponent("missing"), extensions: ["jsonl"]))
+        let reader = DirectoryReader()
+        XCTAssertEqual(
+            DirectoryReader.newest(reader.dated(in: d, extensions: ["jsonl"]))?.lastPathComponent, "new.jsonl",
+            "the .txt is newer but not a candidate")
+        XCTAssertNil(DirectoryReader.newest(reader.dated(in: d.appendingPathComponent("missing"), extensions: ["jsonl"])))
+        XCTAssertEqual(reader.listings, 2, "every listing is counted, a missing folder's too")
         XCTAssertEqual(old.modificationDate.map { Int($0.timeIntervalSinceNow) } ?? 0, -60, accuracy: 2)
         XCTAssertTrue(d.isExistingDirectory); XCTAssertFalse(new.isExistingDirectory)
     }

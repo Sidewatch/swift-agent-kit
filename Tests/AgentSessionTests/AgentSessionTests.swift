@@ -76,7 +76,7 @@ final class AgentSessionTests: XCTestCase {
     func testDefaultInitPointsAtHomeClaudeProjects() {
         let expected = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".claude/projects", isDirectory: true)
-        XCTAssertEqual(ClaudeCodeAdapter().projectsRoot.path, expected.path)
+        XCTAssertEqual(ClaudeCodeAdapter().locator.projectsRoot.path, expected.path)
     }
 
     // MARK: - Detection

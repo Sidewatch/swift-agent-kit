@@ -14,12 +14,18 @@ import Foundation
 /// `<grok home>/sessions/<encoded cwd>/<session id>/` holding `chat_history.jsonl` and
 /// `summary.json` (`xai-grok-config/src/paths.rs`, `xai-grok-shell/src/session/storage/jsonl`).
 /// A sub-agent's session is an ordinary folder too, told apart only by its summary's
-/// `session_kind` (`subagent…`), and is not the conversation.
+/// `session_kind` (`subagent…`), and is not the conversation. The folder is named from the cwd
+/// Grok saw, so every spelling of the path (``PathForms``) is tried. The session chosen is held
+/// while it is being written (``SessionChoice``); a miss is remembered briefly (``LookupMisses``).
 final class GrokSessionIndex: @unchecked Sendable {
     /// Longest folder name Grok writes before it switches to a slug and a hash (`paths.rs`).
     static let maxBucketName = 255
 
     private let sessionsRoot: URL
+    /// Lists folders; its count is the test seam proving a remembered miss lists nothing.
+    let reader = DirectoryReader()
+    private let choice = SessionChoice()
+    private let misses = LookupMisses()
     private let lock = NSLock()
     /// Session folder path → whether it is a sub-agent's (a session's kind never changes).
     private var isSubagentByPath: [String: Bool] = [:]
@@ -27,18 +33,22 @@ final class GrokSessionIndex: @unchecked Sendable {
     /// An index over `sessionsRoot` (`$GROK_HOME/sessions`, default `~/.grok/sessions`).
     init(sessionsRoot: URL) { self.sessionsRoot = sessionsRoot }
 
-    /// The newest top-level session's `chat_history.jsonl` for `root`, or nil.
+    /// The top-level session's `chat_history.jsonl` being written for `root`, or nil.
     func latestSession(for root: URL) -> URL? {
-        guard let bucket = bucket(for: root.standardizedFileURL.path),
-            let sessions = try? FileManager.default.contentsOfDirectory(at: bucket, includingPropertiesForKeys: nil)
-        else { return nil }
-        var best: (url: URL, date: Date)?
-        for session in sessions where !isSubagent(session) {
-            let history = session.appendingPathComponent("chat_history.jsonl")
-            guard let date = history.modificationDate else { continue }
-            if best.map({ date > $0.date }) ?? true { best = (history, date) }
+        misses.remembering(root.path) { choice.choose(for: root.path, newest: newestSession(for: root)) }
+    }
+
+    /// The newest top-level session's history across every bucket a spelling of `root` names.
+    private func newestSession(for root: URL) -> URL? {
+        var histories: [(url: URL, date: Date)] = []
+        for path in PathForms.of(root) {
+            guard let bucket = bucket(for: path), let sessions = reader.contents(of: bucket) else { continue }
+            for session in sessions where !isSubagent(session) {
+                let history = session.appendingPathComponent("chat_history.jsonl")
+                if let date = history.modificationDate { histories.append((history, date)) }
+            }
         }
-        return best?.url
+        return DirectoryReader.newest(histories)
     }
 
     /// The project's folder: its cwd percent-encoded, or — for a name too long — the folder whose
@@ -46,7 +56,7 @@ final class GrokSessionIndex: @unchecked Sendable {
     private func bucket(for path: String) -> URL? {
         let name = Self.encode(path)
         if name.utf8.count <= Self.maxBucketName { return sessionsRoot.appendingPathComponent(name, isDirectory: true) }
-        let buckets = (try? FileManager.default.contentsOfDirectory(at: sessionsRoot, includingPropertiesForKeys: nil)) ?? []
+        let buckets = reader.contents(of: sessionsRoot) ?? []
         return buckets.first { bucket in
             (try? String(contentsOf: bucket.appendingPathComponent(".cwd"), encoding: .utf8))?
                 .trimmingCharacters(in: .whitespacesAndNewlines) == path

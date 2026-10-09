@@ -252,12 +252,14 @@ final class TranscriptCacheTests: XCTestCase {
         assertMatchesFullReparse(a)
     }
 
-    // A newer .jsonl appearing in the project dir (session rotation) must drop
-    // the cache for the old file and serve the new session's contents.
+    // A newer .jsonl appearing in the project dir (session rotation) once the old one has gone
+    // quiet must serve the new session's contents.
     func testSessionRotationSwitchesToNewTranscript() throws {
         try write(userLine("old") + "\n")
         let a = freshAdapter()
         XCTAssertEqual(a.events(for: root).first?.detail, "old")
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date().addingTimeInterval(-SessionChoice.quietAfter - 1)], ofItemAtPath: sessionFile.path)
 
         let newFile = projectDir.appendingPathComponent("rotated.jsonl")
         try (userLine("new") + "\n").write(to: newFile, atomically: false, encoding: .utf8)
@@ -302,6 +304,7 @@ final class TranscriptCacheTests: XCTestCase {
     func testConcurrentPollsAreThreadSafe() throws {
         try write(userLine("hello") + "\n" + usageLine(id: "m1", input: 1000, output: 100) + "\n")
         let a = freshAdapter()
+        let root = self.root
         DispatchQueue.concurrentPerform(iterations: 64) { i in
             switch i % 3 {
             case 0: _ = a.usage(for: root)
