@@ -9,7 +9,7 @@ Each module is its own library product: depend on the package, then only on the 
 | Module | What it is |
 |---|---|
 | [`AgentSession`](Docs/Modules/AgentSession.md) | Reads coding agents' session transcripts (Claude Code, Codex, Gemini, Grok) into one timeline, usage and edited-files model. |
-| [`AgentStatus`](Docs/Modules/AgentStatus.md) | What a terminal is doing — idle, running something, running an agent, waiting on you, finished — from its foreground process and screen. |
+| [`AgentStatus`](Docs/Modules/AgentStatus.md) | What a terminal is doing — idle, running something, running an agent, waiting on you, finished — from its foreground process, the program's own status reports (OSC 7501) and the screen. |
 
 ## Requirements
 
@@ -92,7 +92,18 @@ AgentProcess.commandName(fromArgs: fg.processArgs)                              
 
 ScreenStateClassifier.classify(["Run `npm test`? [y/N]"])                          // .waitingForInput
 
+// A program that speaks the Program Status Protocol (OSC 7501) is believed over the screen.
+var reported = ReportedActivity()
+reported.update([ProgramStatusReport(state: .blocked, kind: .permission, message: "Allow rm -rf build?")])
+reported.activity(screen: .working)                                                // .needsYou(kind: .permission)
+reported.reset()                                                                   // another program took the terminal
+reported.activity(screen: .waitingForInput)                                        // .needsYou(kind: nil) — the screen again
+
 [TerminalStatus.idle, .agent, .waiting].sorted { $0.priority < $1.priority }       // waiting first
+
+// A review comment on its way to a terminal: submitted only into a live agent.
+AgentSendPolicy.verdict(current: shellID, terminals: [.init(id: shellID, status: .idle), .init(id: claudeID, status: .agent)])
+// → target claudeID, submits: true; with no live agent → the current terminal, submits: false
 
 // What the build said, out of the terminal's rows (oldest first): one diagnostic per location, the latest wins.
 let rows = screenRows.map(BuildDiagnostic.stripANSI)

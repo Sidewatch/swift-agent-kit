@@ -122,6 +122,9 @@ final class AgentStatusTests: XCTestCase {
         XCTAssertEqual(TerminalStatus.derive(foreground: running, unseenCompletion: false, attention: .waiting), .waiting)
         XCTAssertEqual(TerminalStatus.derive(foreground: running, unseenCompletion: false, attention: nil), .agent)
         XCTAssertEqual(
+            TerminalStatus.derive(foreground: running, unseenCompletion: false, attention: .done), .finished,
+            "a resident agent whose turn ended by its own report is finished, busy or not")
+        XCTAssertEqual(
             [TerminalStatus.idle, .running, .agent, .finished, .waiting].sorted { $0.priority < $1.priority },
             [.waiting, .finished, .agent, .running, .idle])
         XCTAssertEqual([TerminalStatus.idle, .running, .agent, .finished, .waiting].filter(\.isActionable), [.finished, .waiting])

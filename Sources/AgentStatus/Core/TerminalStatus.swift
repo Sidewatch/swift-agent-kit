@@ -32,11 +32,11 @@ public enum TerminalStatus: Equatable, Sendable {
     case waiting
     /// An agent finished here and nobody has looked at this terminal since.
     ///
-    /// Derived from the terminal's own transition: an agent held the foreground, then the shell
-    /// was back at the prompt while the user was elsewhere. The host latches the edge and reports
-    /// it once the prompt returns, so an agent handing off to a build tool is still one run. The
-    /// limit: Claude Code stays resident between turns, so this fires when the agent EXITS, not
-    /// when a turn ends — turn ends are the transcript's business, not the process table's.
+    /// Two sources. The terminal's own transition: an agent held the foreground, then the shell
+    /// was back at the prompt while the user was elsewhere — the host latches the edge and reports
+    /// it once the prompt returns, so an agent handing off to a build tool is still one run. And
+    /// the program's own report (``TerminalAttention/done``): an agent that stays resident between
+    /// turns never leaves the foreground, so its turn's end is known only because it said so.
     case finished
 
     /// Process names treated as agents. Matched case-insensitively against the pty's foreground
@@ -137,14 +137,16 @@ public enum TerminalStatus: Equatable, Sendable {
 
     /// The whole rule, in one place, so a test calls the REAL derivation rather than a copy.
     /// Precedence: an unacknowledged attention signal outranks everything (a waiting agent is
-    /// still busy in the process table); then busy outranks the completion flag, since a
-    /// terminal that has started new work is working. No parameter has a default: omitting one
-    /// would silently degrade the answer with nothing for the compiler to catch.
+    /// still busy in the process table, and so is a resident one whose turn just ended); then
+    /// busy outranks the completion flag, since a terminal that has started new work is working.
+    /// No parameter has a default: omitting one would silently degrade the answer with nothing
+    /// for the compiler to catch.
     public static func derive(
         foreground fg: ForegroundInfo, unseenCompletion: Bool,
         attention: TerminalAttention?
     ) -> TerminalStatus {
         if attention == .waiting { return .waiting }
+        if attention == .done { return .finished }
         if fg.isBusy { return isAgentProcess(fg.process, path: fg.processPath, args: fg.processArgs) ? .agent : .running }
         return unseenCompletion ? .finished : .idle
     }
@@ -157,6 +159,12 @@ public enum TerminalStatus: Equatable, Sendable {
     /// Whether an agent is (or was) the foreground process — the terminals whose cwd is where
     /// that agent's transcript lives.
     public var impliesAgent: Bool { self == .agent || self == .waiting || self == .finished }
+
+    /// Whether an agent holds the foreground RIGHT NOW and reads what is typed as a message:
+    /// working, or waiting on an answer. Not `finished` — the shell may be back at its prompt,
+    /// where submitted text is a command line — and never a plain shell or another program.
+    /// ``AgentSendPolicy`` decides by this.
+    public var isLiveAgent: Bool { self == .agent || self == .waiting }
 
     /// SF Symbol for the status dot.
     public var symbolName: String {

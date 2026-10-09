@@ -4,7 +4,7 @@ What a terminal is doing: idle, running something, running a coding agent, waiti
 
 Extracted from Sidewatch. Recognises Claude Code, Codex, Gemini CLI, OpenCode, Aider, Hermes, Grok and pi.
 
-> **Note:** there are no hooks. This reads the process table and the screen and nothing else, so it needs nothing installed and has no config file to go stale.
+> **Note:** there are no hooks. This reads the process table, the program's own status reports (OSC 7501, when it sends them) and the screen, and nothing else, so it needs nothing installed and has no config file to go stale.
 
 ## Features
 
@@ -13,7 +13,9 @@ Extracted from Sidewatch. Recognises Claude Code, Codex, Gemini CLI, OpenCode, A
 - 🏷️ **Command naming from argv** — `AgentProcess.commandName(fromArgs:)`: "codex", not "node"; "claude", not a version number
 - 🧱 **Build diagnostics from the scrollback** — `BuildDiagnostic.parse(_:)` reads ONE shape, `path:line[:col]: error|warning|note: message`, anchored so prose with a colon, a URL, a timestamp or a stack frame cannot match; `parseAll(_:)` keeps the LAST diagnostic per location (a build prints its history); `stripANSI(_:)` first, because compilers colour their output
 - 👀 **Screen-state fallback** — `ScreenStateClassifier.classify(rows)`: a numbered choice with a cursor, a y/n question, an explicit "Allow …?" → waiting; "esc to interrupt" → working; nil otherwise (the honest answer, most of the time)
-- 📋 **Value types** — `ForegroundInfo`, `TerminalAttention`, `ScreenState`; all `Sendable`
+- 📡 **The program's own account** — `ReportedActivity` holds the terminal's Program Status Protocol (OSC 7501) records (`ProgramStatusReport`: `state` idle/working/done/blocked/error, `kind` permission/question/auth, `progress`, `app`, `title`, `message`) and merges them with the screen into one `AgentActivity`: while any record is held the reports decide and the screen is not consulted; across several ids the most urgent wins (blocked > working > error > done > idle, the root among equals); `promptStarted()` drops working/blocked as a new shell prompt does, `reset()` forgets a program that left. `AgentActivity.runEnded(from:to:)` names the live → settled edge, which is a turn's end for an agent that never leaves the foreground
+- 🚦 **Where text may go** — `AgentSendPolicy.verdict(current:terminals:redirectsToSingleAgent:)`: text a host derived from a file (a review comment quoting a diff line, a selection, a project's prompt) is submitted only into a terminal whose status `isLiveAgent` (`agent` or `waiting`): the current terminal when it runs one, else the single live agent when redirecting is allowed, else the current terminal with the text pasted and left unsubmitted — a shell would run a quoted `` `touch marker` `` as a command
+- 📋 **Value types** — `ForegroundInfo`, `TerminalAttention` (`waiting`, `done`), `ScreenState`, `ProgramStatusState`, `ProgramStatusKind`, `ProgramStatusReport`; all `Sendable`
 - 🪶 **Small** — Foundation plus swift-foundation-extensions; colours and fonts are the host's
 
 ## Requirements
@@ -43,7 +45,22 @@ AgentProcess.commandName(fromArgs: fg.processArgs)                              
 
 ScreenStateClassifier.classify(["Run `npm test`? [y/N]"])                          // .waitingForInput
 
+// A program that speaks the Program Status Protocol (OSC 7501) is believed over the screen.
+var reported = ReportedActivity()
+reported.update([ProgramStatusReport(state: .working), ProgramStatusReport(id: "build", state: .blocked, kind: .permission)])
+reported.activity(screen: .working)                                                // .needsYou(kind: .permission): the blocked child wins
+reported.update([ProgramStatusReport(state: .idle)])
+AgentActivity.runEnded(from: .working, to: reported.activity(screen: nil))         // true: the turn ended
+TerminalStatus.derive(foreground: fg, unseenCompletion: false, attention: .done)   // .finished, busy or not
+reported.reset()                                                                   // another program took the terminal
+reported.activity(screen: .waitingForInput)                                        // .needsYou(kind: nil) — the screen again
+
 [TerminalStatus.idle, .agent, .waiting].sorted { $0.priority < $1.priority }       // waiting first
+
+// A review comment on its way to a terminal: submitted only into a live agent.
+let terminals = [AgentSendPolicy.Candidate(id: shellID, status: .idle), .init(id: claudeID, status: .agent)]
+AgentSendPolicy.verdict(current: shellID, terminals: terminals)                     // target claudeID, submits: true
+AgentSendPolicy.verdict(current: shellID, terminals: [.init(id: shellID, status: .idle)])  // target shellID, submits: false — paste it, say so
 
 // What the build said, out of the terminal's rows (oldest first): one diagnostic per location, the latest wins.
 let rows = screenRows.map(BuildDiagnostic.stripANSI)

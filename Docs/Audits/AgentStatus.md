@@ -36,6 +36,46 @@ need a `?` or a trailing `:`; the trimmed/lowercased rows stay index-aligned), `
 precedence (attention → busy → completion), the path tier's exact-component rule, the args tier's
 token split, `AgentProcess.commandName`'s runtime/script/`-c`/`-m` handling.
 
+## Program Status Protocol — 9 Oct 2026
+
+Added, each rule pinned by a test that fails against the mutant named:
+
+- `ProgramStatusState` / `ProgramStatusKind` — the OSC 7501 words as raw values, `CaseIterable`.
+  `ProgramStatusReportTests` pins each word and the count (mutant: `working` → `"busy"` fails).
+- `ProgramStatusReport` — one record (id, state, kind, progress, app, title, message); the empty
+  id is the root.
+- `ReportedActivity` — the merge. Reports decide while any is held, the screen otherwise
+  (mutant: screen consulted first fails `testAReportOutranksTheScreenWhicheverWaySay`);
+  `promptStarted()` drops working/blocked and keeps results (mutant: drops nothing fails
+  `testAReportOlderThanANewPromptIsDropped`); across ids the most urgent wins, blocked >
+  working > error > done > idle, the root among equals, then the newest (mutant: root-first fails
+  `testTheMostUrgentRecordDecidesAcrossIds`). The alternative, the root alone, would hide a child
+  asking permission.
+- `AgentActivity` — working / needsYou(kind) / idle / finished / failed; `runEnded(from:to:)` is
+  the live → settled edge (mutant: ignoring the earlier side fails
+  `testARunEndsOnlyOnTheEdgeFromLiveToSettled`).
+- `TerminalAttention.done` restored — now something produces it: a resident agent's own report
+  going from working to idle. `derive` maps it to `.finished` ahead of busy (mutant: the line
+  removed fails `testAttentionOutranksTheProcessAndNeedsYouSortsFirst`).
+- `ProgramStatusKind.label` — the notification body when a blocked record carries no message;
+  three strings added to the catalogue with drafted translations in the eight shipped languages.
+
+Reviewed and sound: the host keeps lifetime for a shell that sends no prompt marks (the app
+resets on its agent-leaves edge); the screen never yields a settled verdict, so `.done` is
+report-only by construction.
+
+## Security review — 9 Oct 2026
+
+- **`AgentSendPolicy`** (Core/): the one rule for text a host did not type. Sidewatch's "Comment for
+  Agent" submitted a message quoting a diff line into `agents.count == 1 ? agents[0] : current`,
+  so a review of a file holding `` `touch MARKER` `` ran it in the current shell, bracketed paste
+  or not — the trailing Return submits either. The rule: submit only into a terminal whose status
+  `isLiveAgent` (`agent`, `waiting`; not `finished`, where the shell may be back, and never a
+  shell); the current terminal when it is one, else the single live agent (when the host allows
+  redirecting — not for a terminal the person chose), else paste into the current terminal
+  unsubmitted. `AgentSendPolicyTests` (four tests). Mutant: `isLiveAgent` counting `finished` —
+  4 failures. The host's harness drives the real PTY (`--selftest-send-safety`).
+
 ## Known non-issues (do not "fix" these again)
 
 - `ScreenStateClassifier`'s `try!` regexes are literal patterns; a bad pattern would fail at first use, not in the field.
@@ -47,3 +87,5 @@ token split, `AgentProcess.commandName`'s runtime/script/`-c`/`-m` handling.
 - 18 Sep 2026 (later) — logic review of the whole package: the `amplify` false positive above, Claude with David.
 - 22 Sep 2026 — `BuildDiagnostic` moved in from Sidewatch (`Terminal/BuildDiagnostic.swift`, unchanged rules, made public) with its harness ported to `BuildDiagnosticTests`; `SECURITY.md` added to match the family.
 - 24 Sep 2026 — `promptLine`, three Claude Code 2.1.2xx prompt shapes from herdr's manifest (MCP elicitation, dynamic-workflow confirmation, the confirm/cancel footer), `AttentionNotice`; mutants: new phrases dropped, footer rule dropped, visible pane notified — each fails.
+- 9 Oct 2026 — Program Status Protocol (OSC 7501): `ProgramStatusState`, `ProgramStatusKind`, `ProgramStatusReport`, `ReportedActivity`, `AgentActivity`, `TerminalAttention.done` restored; six mutants, each fails its test (section above). 38 tests green.
+- 9 Oct 2026 — security review: `AgentSendPolicy`, `TerminalStatus.isLiveAgent` (section above); 42 tests green.

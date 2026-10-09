@@ -29,6 +29,12 @@ final class TranscriptCache<Parser: TranscriptParsing>: @unchecked Sendable {
     /// How many transcripts' states are kept; the least recently served goes first.
     static var capacity: Int { 6 }
 
+    /// The longest line that is parsed, in bytes. A transcript is a file another program writes,
+    /// and one line of it can be anything that program chose to log; a line past this is skipped
+    /// whole — its bytes read once and never parsed — and the offset moves on past it, so a poll
+    /// stays O(appended bytes) however long the line.
+    static var lineCap: Int { 4 << 20 }
+
     /// The results one poll serves — all three readers' values, materialized
     /// once per parse so usage/events/summary always come from the same bytes.
     struct Snapshot: Sendable {
@@ -59,6 +65,9 @@ final class TranscriptCache<Parser: TranscriptParsing>: @unchecked Sendable {
         var snapshot: Snapshot
         /// The poll that last served this entry, for eviction.
         var servedAt = 0
+        /// Whether `offset` sits inside a line longer than ``lineCap`` that is still being
+        /// written: everything up to its terminator is dropped unread by the next polls.
+        var skippingOversizedLine = false
     }
 
     /// Guards all mutable state below. `NSLock` (non-reentrant) is sufficient:
@@ -116,9 +125,7 @@ final class TranscriptCache<Parser: TranscriptParsing>: @unchecked Sendable {
             entries[key] = nil
             return .empty
         }
-        let (lines, tail) = appended.completeLinesAndTail
-        for line in lines { entry.durable.ingest(lineData: line) }
-        entry.offset += UInt64(appended.count - tail.count)
+        let tail = Self.fold(appended, into: &entry)
         entry.size = entry.offset + UInt64(tail.count)
         entry.mtime = stat.mtime
         entry.inode = stat.inode
@@ -127,6 +134,31 @@ final class TranscriptCache<Parser: TranscriptParsing>: @unchecked Sendable {
         entries[key] = entry
         evictBeyondCapacity()
         return entry.snapshot
+    }
+
+    /// Folds `appended` into `entry`: every complete line of at most ``lineCap`` bytes is
+    /// ingested, longer ones are skipped, and `offset` moves past everything consumed. Returns
+    /// the unterminated tail still pending — empty once a tail outgrows the cap, which the entry
+    /// then remembers so the rest of that line is dropped as it arrives.
+    private static func fold(_ appended: Data, into entry: inout Entry) -> Data {
+        var rest = appended
+        if entry.skippingOversizedLine {
+            guard let newline = rest.firstIndex(of: 0x0A) else {
+                entry.offset += UInt64(rest.count)
+                return Data()
+            }
+            let dropped = rest.distance(from: rest.startIndex, to: newline) + 1
+            rest = Data(rest[rest.index(after: newline)...])
+            entry.offset += UInt64(dropped)
+            entry.skippingOversizedLine = false
+        }
+        let (lines, tail) = rest.completeLinesAndTail
+        for line in lines where line.count <= lineCap { entry.durable.ingest(lineData: line) }
+        entry.offset += UInt64(rest.count - tail.count)
+        guard tail.count > lineCap else { return tail }
+        entry.offset += UInt64(tail.count)
+        entry.skippingOversizedLine = true
+        return Data()
     }
 
     /// Drops the least recently served entries once more than ``capacity`` are held.
