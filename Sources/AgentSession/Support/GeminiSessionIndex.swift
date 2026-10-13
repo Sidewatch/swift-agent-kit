@@ -38,6 +38,25 @@ final class GeminiSessionIndex: @unchecked Sendable {
         misses.remembering(root.path) { choice.choose(for: root.path, newest: newestSession(for: root)) }
     }
 
+    /// The project folder of the newest top-level session started in a SUBFOLDER of `project`, or
+    /// nil. Read from the registry (`projects.json` maps each path to its folder); a legacy folder
+    /// is a hash of its path and cannot be read back, so only registered projects are found.
+    func latestSessionRoot(under project: URL) -> URL? {
+        let parents = PathForms.of(project).map { $0 + "/" }
+        return misses.remembering("under:" + project.path) {
+            var best: (path: String, date: Date)?
+            for runtime in runtimeRoots {
+                for (path, id) in projects(in: runtime) where parents.contains(where: { path.hasPrefix($0) }) {
+                    let chats = runtime.appendingPathComponent("tmp/\(id)/chats", isDirectory: true)
+                    for file in reader.dated(in: chats, extensions: ["jsonl"]) where file.url.lastPathComponent.hasPrefix("session-") {
+                        if best.map({ file.date > $0.date }) ?? true { best = (path, file.date) }
+                    }
+                }
+            }
+            return best.map { URL(fileURLWithPath: $0.path, isDirectory: true) }
+        }
+    }
+
     /// The newest top-level `session-*.jsonl` across every folder a spelling of `root` maps to.
     private func newestSession(for root: URL) -> URL? {
         let spellings = PathForms.of(root)

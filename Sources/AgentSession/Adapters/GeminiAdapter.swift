@@ -42,6 +42,9 @@ public struct GeminiAdapter: AgentAdapter {
 
     public func latestSession(for root: URL) -> URL? { index.latestSession(for: root) }
 
+    /// The project folder of the newest Gemini session started in a subfolder of `project`.
+    public func latestSessionRoot(under project: URL) -> URL? { index.latestSessionRoot(under: project) }
+
     public func events(for root: URL) -> [TimelineEvent] {
         cache.results(for: latestSession(for: root)).events.map { SessionPaths.resolved($0, in: root) }
     }

@@ -38,6 +38,32 @@ final class GrokSessionIndex: @unchecked Sendable {
         misses.remembering(root.path) { choice.choose(for: root.path, newest: newestSession(for: root)) }
     }
 
+    /// The working directory of the newest top-level session started in a SUBFOLDER of `project`,
+    /// or nil — every bucket's own path read back (`cwd(ofBucket:)`) and matched by prefix.
+    func latestSessionRoot(under project: URL) -> URL? {
+        let parents = PathForms.of(project).map { $0 + "/" }
+        return misses.remembering("under:" + project.path) {
+            var best: (cwd: String, date: Date)?
+            for bucket in reader.contents(of: sessionsRoot) ?? [] {
+                guard let cwd = Self.cwd(ofBucket: bucket), parents.contains(where: { cwd.hasPrefix($0) }) else { continue }
+                for session in reader.contents(of: bucket) ?? [] where !isSubagent(session) {
+                    let history = session.appendingPathComponent("chat_history.jsonl")
+                    if let date = history.modificationDate, best.map({ date > $0.date }) ?? true { best = (cwd, date) }
+                }
+            }
+            return best.map { URL(fileURLWithPath: $0.cwd, isDirectory: true) }
+        }
+    }
+
+    /// The path a bucket stands for: the `.cwd` file of the slug-and-hash form, else its name
+    /// percent-decoded (the inverse of `encode`).
+    static func cwd(ofBucket bucket: URL) -> String? {
+        if let file = try? String(contentsOf: bucket.appendingPathComponent(".cwd"), encoding: .utf8) {
+            return file.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return bucket.lastPathComponent.removingPercentEncoding
+    }
+
     /// The newest top-level session's history across every bucket a spelling of `root` names.
     private func newestSession(for root: URL) -> URL? {
         var histories: [(url: URL, date: Date)] = []
