@@ -83,10 +83,10 @@ struct GrokTranscriptState: TranscriptParsing {
         let id = call["id"] as? String
         if name == "apply_patch" {
             for path in ApplyPatch.paths((args["patch"] ?? args["input"]) as? String ?? raw) {
-                appendEdit(name, path, anchor: nil, model: model, id: id)
+                appendEdit(name, path, model: model, id: id)
             }
         } else if Self.editTools.contains(name), let path = Self.firstString(args, Self.pathArguments) {
-            appendEdit(name, path, anchor: (args["new_string"] as? String).flatMap(TranscriptText.anchor), model: model, id: id)
+            appendEdit(name, path, model: model, id: id)
         } else {
             let command = Self.shellTools.contains(name) ? args["command"] as? String : nil
             let subject = command ?? Self.firstString(args, Self.subjectArguments) ?? ""
@@ -97,12 +97,12 @@ struct GrokTranscriptState: TranscriptParsing {
         }
     }
 
-    private mutating func appendEdit(_ tool: String, _ path: String, anchor: String?, model: String?, id: String?) {
+    private mutating func appendEdit(_ tool: String, _ path: String, model: String?, id: String?) {
         edited.insert(path)
         buffer.append(
             TimelineEvent(
                 kind: .fileEdit, title: tool, detail: TranscriptText.shortPath(path), filePath: path,
-                timestamp: "", anchor: anchor, model: model, toolUseID: id))
+                timestamp: "", model: model, toolUseID: id))
     }
 
     /// A server-side tool xAI ran for the model: web or X search, or the code interpreter.

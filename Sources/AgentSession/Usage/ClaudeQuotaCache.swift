@@ -31,9 +31,6 @@ public final class ClaudeQuotaCache: @unchecked Sendable {
         self.fetch = fetch
     }
 
-    /// The last value, without fetching.
-    public var lastValue: ClaudeQuota? { lock.lock(); defer { lock.unlock() }; return cached }
-
     /// Delivers the quota on the main queue: the cached value immediately if it is fresh or a
     /// fetch is in flight, otherwise fetches off-main first (resolving `token` there, since a
     /// Keychain read can prompt). Nil when `token` yields nothing. A failed refresh keeps the last

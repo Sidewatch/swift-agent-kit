@@ -182,8 +182,7 @@ extension GeminiTranscriptState {
             edited = path
             event = TimelineEvent(
                 kind: .fileEdit, title: name, detail: TranscriptText.shortPath(path), filePath: path,
-                timestamp: ts, anchor: (args["new_string"] as? String).flatMap(TranscriptText.anchor),
-                model: model, toolUseID: id)
+                timestamp: ts, model: model, toolUseID: id)
         } else {
             let command = name == shellTool ? args["command"] as? String : nil
             let subject = command ?? subjectArguments.lazy.compactMap { args[$0] as? String }.first ?? ""

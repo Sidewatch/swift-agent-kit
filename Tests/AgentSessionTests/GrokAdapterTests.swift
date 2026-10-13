@@ -114,7 +114,6 @@ final class GrokAdapterTests: XCTestCase {
         let adapter = GrokAdapter(sessionsRoot: root)
         let e = adapter.events(for: URL(fileURLWithPath: project))
         XCTAssertEqual(e.compactMap(\.filePath), ["/work/app/src/a.rs", "/abs/b.md", "/work/app/c.txt", "/work/app/d.rs"])
-        XCTAssertEqual(e.first?.anchor, "let answer = 42;")
         XCTAssertEqual(e.first { $0.command != nil }?.command, "cargo test")
         XCTAssertEqual(e.first { $0.command != nil }?.result, "ok")
         XCTAssertEqual(

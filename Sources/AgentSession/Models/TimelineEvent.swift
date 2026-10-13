@@ -58,11 +58,6 @@ public struct TimelineEvent: Equatable, Sendable {
     /// A short `HH:MM` timestamp, or `""` when unknown.
     public let timestamp: String
 
-    /// For a `.fileEdit`, a distinctive line of the text the edit inserted — used to
-    /// locate *where in the file* the edit landed (so a follow-mode reader jumps to the
-    /// edit, not the file's first diff hunk). Nil for whole-file writes and non-edits.
-    public let anchor: String?
-
     /// For a shell tool call, the WHOLE command as the agent ran it — every line of a heredoc,
     /// every `&&` link. `detail` keeps its first 120 characters for the feed; a review surface
     /// that classifies what the agent ran (a `psql -c "DELETE …"` two lines down) needs all of
@@ -110,7 +105,7 @@ public struct TimelineEvent: Equatable, Sendable {
 
     /// Creates a timeline entry.
     public init(
-        kind: Kind, title: String, detail: String, filePath: String?, timestamp: String, anchor: String? = nil, command: String? = nil,
+        kind: Kind, title: String, detail: String, filePath: String?, timestamp: String, command: String? = nil,
         usage: Usage? = nil, model: String? = nil, toolUseID: String? = nil, fullText: String? = nil, source: Source = .person,
         turnKey: String? = nil
     ) {
@@ -119,7 +114,6 @@ public struct TimelineEvent: Equatable, Sendable {
         self.detail = detail
         self.filePath = filePath
         self.timestamp = timestamp
-        self.anchor = anchor
         self.command = command
         self.usage = usage
         self.model = model

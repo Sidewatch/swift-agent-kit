@@ -110,7 +110,6 @@ final class GeminiAdapterTests: XCTestCase {
         let adapter = GeminiAdapter(runtimeRoots: [root])
         let e = adapter.events(for: project)
         XCTAssertEqual(e.compactMap(\.filePath), ["/work/app/src/a.swift", "/abs/b.md"])
-        XCTAssertEqual(e.first?.anchor, "let answer = 42")
         XCTAssertEqual(adapter.summary(for: project)?.editedFiles, ["/work/app/src/a.swift", "/abs/b.md"])
         XCTAssertEqual(e[2].result, "exit 1")
         XCTAssertEqual(e[2].resultIsError, true, "an error response")

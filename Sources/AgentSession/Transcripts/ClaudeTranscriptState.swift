@@ -197,7 +197,6 @@ struct ClaudeTranscriptState: TranscriptParsing {
                     buffer.append(
                         TimelineEvent(
                             kind: isEdit ? .fileEdit : .toolUse, title: name, detail: detail, filePath: path, timestamp: ts,
-                            anchor: isEdit ? Self.editAnchor(input) : nil,
                             command: isEdit ? nil : (input["command"] as? String),
                             usage: bill(), model: messageModel, toolUseID: block["id"] as? String))
                 default: break
@@ -260,23 +259,6 @@ struct ClaudeTranscriptState: TranscriptParsing {
         if let pat = input["pattern"] as? String { return (pat, nil) }
         if let q = input["query"] as? String { return (TranscriptText.firstLine(q, 120), nil) }
         return ("", nil)
-    }
-
-    /// A distinctive line of the text an edit inserts, to locate where the edit landed.
-    /// `Edit` → its `new_string`; `MultiEdit` → the *last* sub-edit's `new_string` (where
-    /// the agent finished); `Write`/`NotebookEdit` → nil (whole-file, no single anchor).
-    private static func editAnchor(_ input: [String: Any]) -> String? {
-        let source: String?
-        if let ns = input["new_string"] as? String {
-            source = ns
-        } else if let edits = input["edits"] as? [[String: Any]],
-            let last = edits.last, let ns = last["new_string"] as? String
-        {
-            source = ns
-        } else {
-            source = nil
-        }
-        return source.flatMap(TranscriptText.anchor)
     }
 
 }
