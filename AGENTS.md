@@ -36,4 +36,6 @@ Terminal AI coding agents, read from the outside: what a terminal's agent is doi
 
 ## Rules
 
-Read `CONTRIBUTING.md` before changing anything: it is the layout and PR rulebook for this package.
+Read `CONTRIBUTING.md` for the folder layout and the pull-request rules.
+
+@CONTRIBUTING.md
