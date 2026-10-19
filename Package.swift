@@ -16,8 +16,7 @@ let package = Package(
         .target(
             name: "AgentSession",
             dependencies: [
-                .product(name: "ProcessRunner", package: "swift-foundation-extensions"),
-                .product(name: "FoundationExtensions", package: "swift-foundation-extensions"),
+                .product(name: "FoundationExtensions", package: "swift-foundation-extensions")
             ],
             resources: [.process("Localizable.xcstrings")],
             swiftSettings: [.swiftLanguageMode(.v6)]),

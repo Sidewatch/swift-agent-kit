@@ -3,6 +3,7 @@
   "strings" : {
     "%@ of %@" : {
       "comment" : "Extra-usage spend: the amount used of the monthly limit, both as currency, such as £12.34 of £100.00",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -56,6 +57,7 @@
     },
     "5-hour session" : {
       "comment" : "Plan-limit window name: the rolling five-hour usage window",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -427,6 +429,7 @@
     },
     "Weekly" : {
       "comment" : "Plan-limit window name: the weekly usage window",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -480,6 +483,7 @@
     },
     "Weekly · %@" : {
       "comment" : "Plan-limit window name: the weekly window for one model; the argument is the model name, such as Opus",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -533,6 +537,7 @@
     },
     "Weekly · all models" : {
       "comment" : "Plan-limit window name: the weekly window across every model",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -782,6 +787,7 @@
     },
     "resets in %lldd %lldh" : {
       "comment" : "Plan-limit window: time until it rolls over, in days (d) and hours (h)",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -835,6 +841,7 @@
     },
     "resets in %lldh %lldm" : {
       "comment" : "Plan-limit window: time until it rolls over, in hours (h) and minutes (m)",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -888,6 +895,7 @@
     },
     "resets in %lldm" : {
       "comment" : "Plan-limit window: time until it rolls over, in minutes (m)",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "variations" : {
@@ -1031,6 +1039,7 @@
     },
     "resets now" : {
       "comment" : "Plan-limit window: the usage window rolls over now",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

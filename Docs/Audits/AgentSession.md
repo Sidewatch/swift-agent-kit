@@ -172,7 +172,6 @@ agent the default (first candidate) is already the opened folder.
 
 ## Known non-issues (do not "fix" these again)
 
-- `ClaudeQuotaCache.lastValue` has no caller in Sidewatch — public API, kept on purpose.
 - `TurnBoundary.id` collapses two turns opened by the same text within one clock minute — documented on
   the property; fixing it means a full-precision timestamp on `TimelineEvent`.
 
@@ -188,3 +187,4 @@ agent the default (first candidate) is already the opened folder.
 - 24 Sep 2026 — `PersistedOutput` (`Support/`): a `<persisted-output>` tool result is read back from its `tool-results/` file's tail, so a test runner's summary survives the spill (`PersistedOutputTests`, four tests, one through the parser). The plan (`TimelineEvent.todos`, `TurnBoundary.plan(in:)`, `AgentSummary.todos`) is REMOVED: Claude Code 2.1.233 / 2.1.268 stopped offering TodoWrite and the task tools on Opus 4.8, Sonnet 5, Fable 5 and newer, and 0 of 368 transcripts on David's machine carry one.
 - 9 Oct 2026 — session lookup: every candidate folder (`/private`, symlinks, NFC/NFD), the chosen transcript held while written, path-keyed cache, subfolder search, misses remembered 2 s (see "Session lookup").
 - 9 Oct 2026 — security review: `TranscriptCache.lineCap` (4 MB). The cache read a whole appended range and parsed every line of it, so one line another program wrote could hold the poll's memory and time hostage. A complete line over the cap is skipped unparsed; an unterminated tail over the cap is consumed and the entry remembers it is inside an oversized line, dropping bytes up to the next line feed on later polls — every byte is read exactly once and nothing re-read. `TranscriptCacheOversizedLineTests` (two tests, synthetic 4 MB lines). Mutant: lines ingested regardless of size and the tail never skipped — 6 failures (the giant parsed, the tail re-read, 8.4 MB read for a 4.2 MB file).
+- 20 Oct 2026 — plan limits and the usage dashboard REMOVED. `ClaudeKeychain`, `ClaudeCredentials`, `ClaudeQuota` (+Display), `ClaudeQuotaCache`, `ClaudeUsageEndpoint`, `UsageAggregator`, `UsageTotals`, `UsageRecord` and `UsageReport` are gone with their tests, and so is the ProcessRunner dependency. The quota came from an undocumented endpoint for whichever account was logged in, and the aggregate read every transcript on the Mac, which no account owns: with two Claude accounts on one machine the dashboard mixed them. Per-session context, tokens and cost (`AgentUsage`, `ModelPricing`) stay.

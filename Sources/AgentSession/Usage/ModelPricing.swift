@@ -11,8 +11,8 @@
 import Foundation
 
 /// Per-million-token USD list prices by model family and generation, from Anthropic's published
-/// pricing page (platform.claude.com/docs/en/about-claude/pricing). Shared by ``ClaudeTranscriptState``
-/// and ``UsageAggregator`` so a session's cost never disagrees with the dashboard's total.
+/// pricing page (platform.claude.com/docs/en/about-claude/pricing). Shared by every transcript
+/// state and ``TurnBoundary`` so a session's cost never disagrees with its turns' costs.
 /// Estimates only: 5-minute cache-write tier, no discounts, and a subscription is not billed per
 /// token. Prices change at fixed generations (Opus and Haiku 4.5, Sonnet 5, Fable's cache read
 /// 5.1); an id with no version is charged its family's older rates.
