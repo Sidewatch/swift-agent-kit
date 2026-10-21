@@ -80,11 +80,15 @@ public struct BuildDiagnostic: Equatable, Sendable {
             message: ns.substring(with: m.range(at: 5)).trimmingCharacters(in: .whitespaces))
     }
 
-    /// Parses many lines, keeping the LAST diagnostic per (file, line).
+    /// Parses many lines, keeping the LAST diagnostic per (file, line) — except that a `note:`
+    /// never replaces an error or warning there.
     ///
     /// Last wins because a build prints its history: a line fixed in the second run still has
     /// its error from the first sitting further up the scrollback, and marking that would be
-    /// showing you a problem you already solved. Locations keep first-seen order.
+    /// showing you a problem you already solved. A note is not a newer report, though: compilers
+    /// print it right after the error it annotates, often at the same location (`error: …` then
+    /// `note: …` on one line), and letting it win would mark a line that does not build as a
+    /// mere warning. Locations keep first-seen order.
     ///
     /// - Parameter lines: Terminal rows, oldest first, ANSI already stripped.
     /// - Returns: One diagnostic per location, oldest location first.
@@ -95,6 +99,7 @@ public struct BuildDiagnostic: Equatable, Sendable {
             guard let d = parse(text) else { continue }
             let key = "\(d.path)|\(d.line)"
             if byKey[key] == nil { order.append(key) }
+            if d.severity == .note, let earlier = byKey[key], earlier.severity != .note { continue }
             byKey[key] = d
         }
         return order.compactMap { byKey[$0] }

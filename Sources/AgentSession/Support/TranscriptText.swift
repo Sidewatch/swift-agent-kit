@@ -13,13 +13,9 @@ import FoundationExtensions
 
 /// How every transcript parser renders text for a timeline row — one rule for all agents.
 enum TranscriptText {
-    /// The trimmed first line of `s`, truncated to `max` characters with an ellipsis.
-    static func firstLine(_ s: String, _ max: Int = 160) -> String {
-        // `isNewline`: "\r\n" is one Character, so a "\n" split would keep a CRLF prompt whole.
-        let line = s.split(maxSplits: 1, omittingEmptySubsequences: true, whereSeparator: \.isNewline).first.map(String.init) ?? s
-        let t = line.trimmingCharacters(in: .whitespacesAndNewlines)
-        return t.count > max ? String(t.prefix(max)) + "…" : t
-    }
+    /// The trimmed first line of `s` that holds anything, at most `max` characters with the ellipsis
+    /// (FoundationExtensions `firstLine` / `clipped(to:)`).
+    static func firstLine(_ s: String, _ max: Int = 160) -> String { s.firstLine.clipped(to: max) }
 
     /// An absolute path as its last two components (`.../Dir/File.swift`).
     static func shortPath(_ p: String) -> String {

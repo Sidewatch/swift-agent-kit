@@ -112,4 +112,52 @@ final class BuildDiagnosticTests: XCTestCase {
         let all = BuildDiagnostic.parseAll(["/p/A.swift:1:1: error: a", "/p/A.swift:2:1: error: b"])
         XCTAssertEqual(all.map(\.line), [1, 2])
     }
+
+    // MARK: - A note annotates; it is never the newer report
+
+    func testANoteAfterAnErrorOnTheSameLineDoesNotReplaceIt() {
+        let swiftc = [
+            "/p/A.swift:10:5: error: cannot find 'x' in scope",
+            "/p/A.swift:10:5: note: did you mean 'y'?",
+        ]
+        XCTAssertEqual(BuildDiagnostic.parseAll(swiftc).first?.severity, .error)
+        XCTAssertEqual(BuildDiagnostic.parseAll(["/p/A.swift:3:1: warning: w", "/p/A.swift:3:1: note: n"]).first?.severity, .warning)
+        XCTAssertEqual(BuildDiagnostic.parseAll(["/p/A.swift:4:1: note: alone"]).first?.severity, .note, "a note alone is kept")
+        XCTAssertEqual(
+            BuildDiagnostic.parseAll(["/p/A.swift:6:1: note: older", "/p/A.swift:6:1: note: newer"]).first?.message, "newer",
+            "among notes the latest still wins")
+        XCTAssertEqual(
+            BuildDiagnostic.parseAll(["/p/A.swift:5:1: error: old", "/p/A.swift:5:1: warning: new"]).first?.severity, .warning,
+            "a newer warning still replaces an older error")
+    }
+
+    // MARK: - Marks
+
+    func testMarksResolvePathsAndTheMoreSeriousWinsOnAMergedLine() {
+        let diagnostics = BuildDiagnostic.parseAll([
+            "Sources/A.swift:7:1: warning: relative",
+            "/repo/Sources/A.swift:7:1: error: absolute",
+            "/repo/Sources/A.swift:9:1: note: n",
+            "/gone/B.swift:1:1: error: a file that does not exist",
+        ])
+        let marks = BuildDiagnostic.marks(diagnostics) { raw in
+            raw == "/gone/B.swift" ? nil : (raw.hasPrefix("/") ? raw : "/repo/" + raw)
+        }
+        XCTAssertEqual(marks["/repo/Sources/A.swift"]?[7], .error, "two spellings of one file merge; the error wins")
+        XCTAssertEqual(marks["/repo/Sources/A.swift"]?[9], .note)
+        XCTAssertNil(marks["/gone/B.swift"], "an unresolved path marks nothing")
+        let reversed = BuildDiagnostic.marks(diagnostics.reversed()) { $0.hasPrefix("/") ? $0 : "/repo/" + $0 }
+        XCTAssertEqual(reversed["/repo/Sources/A.swift"]?[7], .error, "whatever the order")
+    }
+
+    func testAPrintedPathResolvesAgainstTheCommandsDirectoryOrNotAtAll() {
+        let real: Set<String> = ["/repo/Sources/A.swift", "/abs/B.swift"]
+        let exists = { real.contains($0) }
+        let cwd = URL(fileURLWithPath: "/repo")
+        XCTAssertEqual(BuildDiagnostic.resolvedPath("Sources/A.swift", cwd: cwd, exists: exists), "/repo/Sources/A.swift")
+        XCTAssertEqual(BuildDiagnostic.resolvedPath("./Sources/../Sources/A.swift", cwd: cwd, exists: exists), "/repo/Sources/A.swift")
+        XCTAssertEqual(BuildDiagnostic.resolvedPath("/abs/B.swift", cwd: cwd, exists: exists), "/abs/B.swift")
+        XCTAssertNil(BuildDiagnostic.resolvedPath("Missing.swift", cwd: cwd, exists: exists))
+        XCTAssertNil(BuildDiagnostic.resolvedPath("Sources/A.swift", cwd: nil, exists: exists), "a relative path needs a directory")
+    }
 }

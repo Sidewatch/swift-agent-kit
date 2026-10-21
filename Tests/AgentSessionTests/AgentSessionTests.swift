@@ -364,7 +364,7 @@ final class AgentSessionTests: XCTestCase {
             """)
         let events = adapter.events(for: root)
         XCTAssertEqual(events.count, 1)
-        XCTAssertEqual(events[0].detail.count, 161)  // truncated to 160 + ellipsis
+        XCTAssertEqual(events[0].detail.count, 160)  // clipped to 160, the ellipsis included (`clipped(to:)`)
         XCTAssertNotNil(adapter.usage(for: root))
     }
 
