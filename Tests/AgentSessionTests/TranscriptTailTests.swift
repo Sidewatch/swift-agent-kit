@@ -82,12 +82,9 @@ final class TranscriptTailTests: XCTestCase {
 
     func testASummaryNeedsALongAbsenceAndSomethingToTell() {
         var gap = AwayDigest()
-        XCTAssertNil(gap.summary(away: 600, costBefore: 1, costNow: 1), "nothing happened")
-        XCTAssertNotNil(gap.summary(away: 600, costBefore: 1, costNow: 1.01), "a cent was spent")
-        XCTAssertNil(gap.summary(away: 600, costBefore: 1, costNow: 1.004), "under half a cent is nothing")
+        XCTAssertNil(gap.summary(away: 600), "nothing happened")
         gap.add([edit("/a")])
-        XCTAssertNil(gap.summary(away: 179, costBefore: nil, costNow: nil), "a short absence")
-        XCTAssertEqual(gap.summary(away: 180, costBefore: nil, costNow: nil), AwayDigest.Summary(filesEdited: 1, toolRuns: 0, cost: nil))
-        XCTAssertEqual(gap.summary(away: 180, costBefore: 2, costNow: 1)?.cost, nil, "a cost that went down is not shown")
+        XCTAssertNil(gap.summary(away: 179), "a short absence")
+        XCTAssertEqual(gap.summary(away: 180), AwayDigest.Summary(filesEdited: 1, toolRuns: 0))
     }
 }

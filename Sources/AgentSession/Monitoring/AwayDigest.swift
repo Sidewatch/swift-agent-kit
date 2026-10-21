@@ -20,15 +20,10 @@ public struct AwayDigest: Sendable, Equatable {
         public let filesEdited: Int
         /// Tool runs that were not file edits.
         public let toolRuns: Int
-        /// What the session cost over the gap, when a cost worth showing is known (see ``showsCost(_:)``).
-        public let cost: Double?
     }
 
     /// How long the person must have been away for a summary: shorter absences need none.
     public static let minimumAway: TimeInterval = 180
-    /// The smallest cost worth showing: under half a cent rounds to nothing.
-    public static let minimumCost = 0.005
-
     /// Distinct files edited so far in the gap.
     public private(set) var editedFiles = Set<String>()
     /// Non-edit tool runs so far in the gap (an edit with no path counts here).
@@ -51,16 +46,10 @@ public struct AwayDigest: Sendable, Equatable {
         }
     }
 
-    /// Whether a cost difference is worth printing.
-    public static func showsCost(_ cost: Double?) -> Bool { (cost ?? 0) >= minimumCost }
-
-    /// The summary for an absence of `away` seconds, the session having cost `costBefore` when the person
-    /// left and `costNow` now; nil when they were away briefly or nothing worth telling happened.
-    public func summary(away: TimeInterval, costBefore: Double?, costNow: Double?) -> Summary? {
-        guard away >= Self.minimumAway else { return nil }
-        // A cost that went down (a new session) is negative, and so never past the threshold.
-        let cost = costBefore.flatMap { before in costNow.map { $0 - before } }
-        guard !editedFiles.isEmpty || toolRuns > 0 || Self.showsCost(cost) else { return nil }
-        return Summary(filesEdited: editedFiles.count, toolRuns: toolRuns, cost: Self.showsCost(cost) ? cost : nil)
+    /// The summary for an absence of `away` seconds; nil when the person was away briefly or the agent
+    /// edited nothing and ran nothing. It carries no money: Sidewatch prints no prices.
+    public func summary(away: TimeInterval) -> Summary? {
+        guard away >= Self.minimumAway, !editedFiles.isEmpty || toolRuns > 0 else { return nil }
+        return Summary(filesEdited: editedFiles.count, toolRuns: toolRuns)
     }
 }
