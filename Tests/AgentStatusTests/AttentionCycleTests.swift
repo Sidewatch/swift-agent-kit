@@ -45,4 +45,11 @@ final class AttentionCycleTests: XCTestCase {
         XCTAssertNil(AttentionCycle.next(after: 0, in: [.idle, .agent, .running]))
         XCTAssertNil(AttentionCycle.next(after: nil, in: []))
     }
+
+    func testNeedingYouListsEveryWaitingBeforeEveryFinishedInHostOrder() {
+        let statuses: [TerminalStatus] = [.finished, .idle, .waiting, .agent, .finished, .waiting, .running]
+        XCTAssertEqual(AttentionCycle.needingYou(in: statuses), [2, 5, 0, 4])
+        XCTAssertEqual(AttentionCycle.needingYou(in: [.idle, .agent, .running]), [], "nothing needs you: an empty list")
+        XCTAssertEqual(AttentionCycle.needingYou(in: []), [])
+    }
 }

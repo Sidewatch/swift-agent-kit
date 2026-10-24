@@ -26,4 +26,11 @@ public enum AttentionCycle {
         let order = (0..<statuses.count).map { (start + $0) % statuses.count }
         return order.first { statuses[$0] == .waiting } ?? order.first { statuses[$0] == .finished }
     }
+
+    /// Every terminal that needs you, in the order to offer them: each one ``TerminalStatus/waiting``
+    /// on you (a question blocks the agent) before each ``TerminalStatus/finished`` one, the host's
+    /// order kept within a kind — the Dock menu's list, where all of them show at once.
+    public static func needingYou(in statuses: [TerminalStatus]) -> [Int] {
+        statuses.indices.filter { statuses[$0] == .waiting } + statuses.indices.filter { statuses[$0] == .finished }
+    }
 }
