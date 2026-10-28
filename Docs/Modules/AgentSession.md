@@ -4,16 +4,16 @@ A reader for terminal AI coding-agent session transcripts. It maps an agent's on
 
 ## Features
 
-- 🧭 **Agent-agnostic model** — `TimelineEvent`, `AgentUsage`, `AgentSummary`
-- 🔌 **Adapter protocol** — implement `AgentAdapter` once per agent
-- 📐 **Turn boundaries** — `TurnBoundary` splits the flat timeline into agent turns (one user prompt to just before the next), with a content-derived stable id so a checkpoint can be pinned to a turn
-- 🤖 **Four agents** — `ClaudeCodeAdapter` (`~/.claude/projects/…/*.jsonl`), `CodexAdapter` (`~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`), `GeminiAdapter` (`~/.gemini/tmp/<project>/chats/session-*.jsonl`) and `GrokAdapter` for xAI's Grok Build (`~/.grok/sessions/<encoded cwd>/<id>/chat_history.jsonl`). Each is tested against sanitized transcripts from REAL runs and its rules checked against the agent's own source (`Tests/Fixtures/NOTICE.md` says which). An adapter written from a published schema alone reports "no session" forever when the format drifts, and tells no one, so none is added without both.
-- 🕘 **Activity timeline** — prompts, assistant prose, tool calls, and file edits, with local-clock `HH:MM` timestamps
-- 💰 **Telemetry** — context fill % (`AgentUsage.contextPercent`), output tokens, and estimated USD cost, deduplicated per API response
-- ✅ **Edited files** — the files a session wrote; `Agents.editedFiles(for:)` unions every agent's in a folder.
-- 🔎 **Several agents at once** — `Agents.resolve(candidates:preferring:under:)` reads the agent named (the one in the terminal in use) when it has a session there, else the most recently active, and falls back to a session launched in a subfolder of the project (Claude Code, Codex, Gemini — registered projects — and Grok); the hit carries the adapter, the session's folder and the transcript. `Agents.adapter(forProcess:)` maps a terminal's process name to its reader.
-- 🧪 **Fully tested** — synthetic-transcript tests including malformed, truncated, and garbage input
-- 🪶 **Small** — Foundation plus one family package, swift-foundation-extensions (its FoundationExtensions module)
+- **Agent-agnostic model** — `TimelineEvent`, `AgentUsage`, `AgentSummary`
+- **Adapter protocol** — implement `AgentAdapter` once per agent
+- **Turn boundaries** — `TurnBoundary` splits the flat timeline into agent turns (one user prompt to just before the next), with a content-derived stable id so a checkpoint can be pinned to a turn
+- **Four agents** — `ClaudeCodeAdapter` (`~/.claude/projects/…/*.jsonl`), `CodexAdapter` (`~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`), `GeminiAdapter` (`~/.gemini/tmp/<project>/chats/session-*.jsonl`) and `GrokAdapter` for xAI's Grok Build (`~/.grok/sessions/<encoded cwd>/<id>/chat_history.jsonl`). Each is tested against sanitized transcripts from REAL runs and its rules checked against the agent's own source (`Tests/Fixtures/NOTICE.md` says which). An adapter written from a published schema alone reports "no session" forever when the format drifts, and tells no one, so none is added without both.
+- **Activity timeline** — prompts, assistant prose, tool calls, and file edits, with local-clock `HH:MM` timestamps
+- **Telemetry** — context fill % (`AgentUsage.contextPercent`), output tokens, and estimated USD cost, deduplicated per API response
+- **Edited files** — the files a session wrote; `Agents.editedFiles(for:)` unions every agent's in a folder.
+- **Several agents at once** — `Agents.resolve(candidates:preferring:under:)` reads the agent named (the one in the terminal in use) when it has a session there, else the most recently active, and falls back to a session launched in a subfolder of the project (Claude Code, Codex, Gemini — registered projects — and Grok); the hit carries the adapter, the session's folder and the transcript. `Agents.adapter(forProcess:)` maps a terminal's process name to its reader.
+- **Fully tested** — synthetic-transcript tests including malformed, truncated, and garbage input
+- **Small** — Foundation plus one family package, swift-foundation-extensions (its FoundationExtensions module)
 
 ## Requirements
 
