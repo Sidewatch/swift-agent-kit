@@ -33,6 +33,10 @@ public struct ClaudeCodeAdapter: AgentAdapter {
     /// type on purpose: copies of this adapter value share the one cache.
     private let cache = TranscriptCache<ClaudeTranscriptState>()
 
+    /// The files the session's sub-agents wrote, read from their own transcripts. A reference type,
+    /// shared by copies as the cache is.
+    private let subagents = ClaudeSubagentEdits()
+
     /// Creates an adapter that reads the real `~/.claude/projects` container.
     public init() { self.init(projectsRoot: ClaudeSessionIndex.defaultProjectsRoot) }
 
@@ -78,12 +82,14 @@ public struct ClaudeCodeAdapter: AgentAdapter {
         cache.results(for: url).events
     }
 
-    /// The edited-files set from the latest transcript, or `nil` when there is no
-    /// transcript at all.
+    /// The files the latest session edited, its sub-agents' edits included (each sub-agent writes
+    /// its own transcript beside the session's), or `nil` when there is no transcript at all.
     /// - Note: The *first* call on a large session parses the whole file, so call off the
     ///   main thread.
     public func summary(for root: URL) -> AgentSummary? {
-        cache.results(for: latestSession(for: root)).summary
+        guard let session = latestSession(for: root), let own = cache.results(for: session).summary else { return nil }
+        // A sub-agent's edits are in its own transcript, not the session's.
+        return AgentSummary(editedFiles: own.editedFiles.union(subagents.editedFiles(forSession: session)))
     }
 
     // MARK: - Test seams
@@ -97,4 +103,7 @@ public struct ClaudeCodeAdapter: AgentAdapter {
     /// incremental polling this grows by roughly the appended bytes per poll,
     /// not the file size. Verifies appended-only reads in tests.
     var transcriptBytesRead: Int { cache.bytesRead }
+
+    /// Total sub-agent transcript bytes read so far.
+    var subagentBytesRead: Int { subagents.bytesRead }
 }

@@ -33,3 +33,14 @@ any reason but `interjection` as Grok's, so it holds either way.
 
 All three folders: MIT License — Copyright (c) 2026 Alexander Malakhov. The full licence text:
 <https://github.com/jazzyalex/agent-sessions/blob/main/LICENSE>.
+
+## Claude/
+
+A session of Claude Code 2.1.316 with two sub-agents, taken from a real run and reduced by a script:
+the files, their line order, every key, the tool names and the block types are the run's; every
+text, prompt, path, id, model name and timestamp is replaced (`[trimmed for fixture]`,
+`/tmp/project/Sources/FileN.ext`, numbered ids), and lines that are not messages are kept as one
+line per type. Layout as Claude Code writes it: `<session>.jsonl`, and beside it
+`<session>/subagents/agent-<id>.jsonl` with `agent-<id>.meta.json`. The session's own transcript
+edits File1 to File55; the second sub-agent writes File56 and File57; the first edits nothing.
+
