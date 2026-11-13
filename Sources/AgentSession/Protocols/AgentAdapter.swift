@@ -65,3 +65,9 @@ public extension AgentAdapter {
     /// Nil: an adapter that files sessions only by exact folder cannot look beneath one.
     func latestSessionRoot(under project: URL) -> URL? { nil }
 }
+
+public extension AgentAdapter {
+    /// Token/cost telemetry for one session of `root`. An adapter that can read a session's usage
+    /// from the session alone does; the others answer for the folder's latest.
+    func usage(fromSession session: URL, root: URL) -> AgentUsage? { usage(for: root) }
+}

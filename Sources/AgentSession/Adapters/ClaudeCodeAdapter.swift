@@ -67,6 +67,9 @@ public struct ClaudeCodeAdapter: AgentAdapter {
         cache.results(for: latestSession(for: root)).usage
     }
 
+    /// The usage of one transcript, whichever is the folder's latest.
+    public func usage(fromSession session: URL, root: URL) -> AgentUsage? { cache.results(for: session).usage }
+
     /// The activity timeline parsed from the latest transcript, oldest first, capped to the most
     /// recent ``EventBuffer/cap`` events. Malformed lines are skipped. A call that started a
     /// sub-agent carries what the sub-agent did (``TimelineEvent/subagent``).

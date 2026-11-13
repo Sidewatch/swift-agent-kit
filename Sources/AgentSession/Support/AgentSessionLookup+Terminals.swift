@@ -18,7 +18,14 @@ public extension AgentSessionLookup {
 
     /// Test seam: ``resolve()`` over an explicit adapter list.
     internal func resolve(in adapters: [AgentAdapter]) -> Agents.Hit? {
-        Agents.resolve(candidates: candidates, preferring: preferredAgent, under: project, in: adapters)
+        // A session the agent named is the session: two of one agent in one folder write two
+        // transcripts, and the newest in the folder is as often the other's.
+        if let session, let adapter = adapters.first(where: { $0.name == preferredAgent }), let root = candidates.first,
+            FileManager.default.fileExists(atPath: session.path)
+        {
+            return (adapter, root, session)
+        }
+        return Agents.resolve(candidates: candidates, preferring: preferredAgent, under: project, in: adapters)
     }
 
     /// One lookup per agent terminal — its directory first, then the project's own `folders` — each
@@ -29,11 +36,22 @@ public extension AgentSessionLookup {
     static func perTerminal(_ terminals: [(directory: URL, agent: String?)], folders: [URL], fallbackAgent: String?, project: URL?)
         -> [AgentSessionLookup]
     {
+        perTerminal(
+            naming: terminals.map { ($0.directory, $0.agent, nil) }, folders: folders, fallbackAgent: fallbackAgent, project: project)
+    }
+
+    /// ``perTerminal(_:folders:fallbackAgent:project:)`` where a terminal's agent may have named its
+    /// own session: that terminal's lookup is then that session and no other.
+    static func perTerminal(
+        naming terminals: [(directory: URL, agent: String?, session: URL?)], folders: [URL], fallbackAgent: String?, project: URL?
+    ) -> [AgentSessionLookup] {
         guard !terminals.isEmpty else {
             return [AgentSessionLookup(candidates: uniqued(folders), preferredAgent: fallbackAgent, project: project)]
         }
         return terminals.map { terminal in
-            AgentSessionLookup(candidates: uniqued([terminal.directory] + folders), preferredAgent: terminal.agent, project: project)
+            AgentSessionLookup(
+                candidates: uniqued([terminal.directory] + folders), preferredAgent: terminal.agent, project: project,
+                session: terminal.session)
         }
     }
 

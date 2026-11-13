@@ -20,12 +20,17 @@ public struct AgentSessionLookup: Sendable, Equatable {
     public let preferredAgent: String?
     /// The opened folder, nil when none is open.
     public let project: URL?
+    /// The session the agent itself named (through a hook, say), when it has: then nothing is
+    /// searched for. It counts only with ``preferredAgent``, whose session it is, and while it exists.
+    public let session: URL?
 
-    /// A lookup over `candidates`, preferring `preferredAgent`, beneath `project`.
-    public init(candidates: [URL], preferredAgent: String?, project: URL? = nil) {
+    /// A lookup over `candidates`, preferring `preferredAgent`, beneath `project`; `session` when
+    /// the agent has said exactly which session is its own.
+    public init(candidates: [URL], preferredAgent: String?, project: URL? = nil, session: URL? = nil) {
         self.candidates = candidates
         self.preferredAgent = preferredAgent
         self.project = project
+        self.session = session
     }
 
     /// No folder open: nothing to look in.

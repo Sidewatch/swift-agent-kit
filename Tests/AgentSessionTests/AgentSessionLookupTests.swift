@@ -54,6 +54,55 @@ final class AgentSessionLookupTests: XCTestCase {
         XCTAssertEqual(lookups, [AgentSessionLookup(candidates: [project], preferredAgent: "gemini", project: project)])
     }
 
+    func testASessionTheAgentNamedIsTheSessionWhateverIsNewestInTheFolder() throws {
+        let scratch = FileManager.default.temporaryDirectory.appendingPathComponent("named-session-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: scratch, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: scratch) }
+        let mine = scratch.appendingPathComponent("mine.jsonl"), theirs = scratch.appendingPathComponent("theirs.jsonl")
+        try "{}".write(to: mine, atomically: true, encoding: .utf8)
+        try "{}".write(to: theirs, atomically: true, encoding: .utf8)
+        // The folder's latest is the other terminal's: two of one agent in one folder.
+        let claude = FakeAgent(name: "claude", sessions: [folder.path: theirs])
+        let lookups = AgentSessionLookup.perTerminal(
+            naming: [(directory: folder, agent: "claude", session: mine), (directory: folder, agent: "claude", session: nil)],
+            folders: [project],
+            fallbackAgent: nil, project: project)
+        let found = lookups.compactMap { $0.resolve(in: [claude]) }
+        XCTAssertEqual(found.map(\.session.lastPathComponent), ["mine.jsonl", "theirs.jsonl"], "the one that named its session reads it")
+        XCTAssertEqual(found.first?.root, folder)
+        XCTAssertEqual(Set(found.map { Agents.sessionKey($0) }).count, 2, "two sessions, two keys")
+
+        func resolved(_ session: URL?, agent: String?) -> String? {
+            AgentSessionLookup(candidates: [folder], preferredAgent: agent, project: project, session: session)
+                .resolve(in: [claude])?.session.lastPathComponent
+        }
+        XCTAssertEqual(
+            resolved(scratch.appendingPathComponent("gone.jsonl"), agent: "claude"), "theirs.jsonl",
+            "a session that is gone is searched for as before")
+        XCTAssertEqual(resolved(mine, agent: nil), "theirs.jsonl", "a session with no agent to read it")
+        XCTAssertEqual(resolved(mine, agent: "codex"), "theirs.jsonl", "nor one whose agent has no adapter here")
+        XCTAssertNil(
+            AgentSessionLookup(candidates: [], preferredAgent: "claude", session: mine).resolve(in: [claude]), "nothing open: nothing read")
+    }
+
+    func testClaudeCodeReadsTheUsageOfTheSessionAskedFor() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("named-usage-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        func transcript(_ name: String, output: Int) throws -> URL {
+            let url = root.appendingPathComponent(name)
+            let line =
+                #"{"type":"assistant","timestamp":"2026-07-09T10:08:00.000Z","message":{"model":"claude-sonnet-4","usage":{"input_tokens":1000,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":OUT},"content":[{"type":"text","text":"ok"}]}}"#
+            try (line.replacingOccurrences(of: "OUT", with: "\(output)") + "\n").write(to: url, atomically: true, encoding: .utf8)
+            return url
+        }
+        let adapter = ClaudeCodeAdapter(projectsRoot: root.appendingPathComponent("none"))
+        let folder = URL(fileURLWithPath: "/nowhere")
+        XCTAssertEqual(adapter.usage(fromSession: try transcript("a.jsonl", output: 111), root: folder)?.outputTokens, 111)
+        XCTAssertEqual(adapter.usage(fromSession: try transcript("b.jsonl", output: 222), root: folder)?.outputTokens, 222)
+        XCTAssertNil(adapter.usage(for: folder), "the folder has no session of its own")
+    }
+
     func testASessionsKeyIsItsAgentAndTranscript() {
         let hit: Agents.Hit = (FakeAgent(name: "codex", sessions: [:]), folder, URL(fileURLWithPath: "/s/x.jsonl"))
         XCTAssertEqual(Agents.sessionKey(hit), "codex|/s/x.jsonl")
