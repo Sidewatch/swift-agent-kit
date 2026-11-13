@@ -86,6 +86,12 @@ public enum TerminalStatus: Equatable, Sendable {
         return !next.isLetter
     }
 
+    /// Whether the command line `args` runs one of ``genericRuntimes`` (`node …`, `/usr/bin/env …`).
+    static func startsWithGenericRuntime(_ args: String) -> Bool {
+        guard let first = args.split(whereSeparator: { $0 == " " || $0 == "\t" }).first else { return false }
+        return genericRuntimes.contains(first.split(separator: "/").last.map(String.init) ?? String(first))
+    }
+
     /// Whether `name` is one of ``genericRuntimes``, so only its arguments can identify it.
     public static func isGenericRuntime(_ name: String?) -> Bool {
         guard let name = name?.lowercased() else { return false }
@@ -110,7 +116,10 @@ public enum TerminalStatus: Equatable, Sendable {
             if exactAgentProcessNames.contains(name) { return name }
             if let agent = agentProcessNames.first(where: { hasAgentPrefix(name, $0) }) { return agent }
         }
-        if let args = args?.lowercased(), !args.isEmpty {
+        // Arguments name the program only under a runtime (`node …/codex/cli.js`). Any other
+        // program's arguments are its own business: `ssh pi@host`, `docker exec goose` and
+        // `psql amp` name a user, a container and a database, and none of them is an agent.
+        if let args = args?.lowercased(), !args.isEmpty, startsWithGenericRuntime(args) {
             // Split on separators so `@openai/codex/cli.js` yields "codex" as its own token, and a
             // path merely CONTAINING the word does not. Whole tokens, so the exact names belong
             // here too — without them an agent installed under a runtime (`node …/pi/cli.js`) is

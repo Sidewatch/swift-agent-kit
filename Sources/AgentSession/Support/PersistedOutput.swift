@@ -31,10 +31,32 @@ public enum PersistedOutput {
 
     /// `text` with a stub replaced by the last `cap` characters of the file it names (an ellipsis
     /// first when cut), or `text` itself when it is no stub or the file cannot be read.
-    public static func resolved(_ text: String, cap: Int, read: (String) -> String? = { try? String(contentsOfFile: $0, encoding: .utf8) })
-        -> String
-    {
-        guard let path = savedPath(in: text), let full = read(path) else { return text }
+    /// `read` stands in for the file in tests; left out, only the file's end is read (``tail(ofFile:characters:)``).
+    public static func resolved(_ text: String, cap: Int, read: ((String) -> String?)? = nil) -> String {
+        guard let path = savedPath(in: text), let full = read.map({ $0(path) }) ?? tail(ofFile: path, characters: cap + 1) else {
+            return text
+        }
         return full.count > cap ? "…" + String(full.suffix(cap)) : full
+    }
+
+    /// At least the last `characters` characters of the file at `path` (all of a shorter one), read
+    /// from its end: a result can be hundreds of megabytes and only its last lines are shown. Nil
+    /// for anything but a regular file — the path is text the transcript carries, and a link to a
+    /// device or a pipe would never finish reading.
+    public static func tail(ofFile path: String, characters: Int) -> String? {
+        let url = URL(fileURLWithPath: path).resolvingSymlinksInPath()
+        guard let values = try? url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey]), values.isRegularFile == true,
+            let size = values.fileSize, let handle = try? FileHandle(forReadingFrom: url)
+        else { return nil }
+        defer { try? handle.close() }
+        // Four bytes hold any character's scalar; a few more cover a cut inside one.
+        let wanted = max(0, characters) * 4 + 8
+        let start = max(0, size - wanted)
+        guard (try? handle.seek(toOffset: UInt64(start))) != nil, var data = try? handle.read(upToCount: wanted) else { return nil }
+        if start > 0 {
+            // The read began mid-file, perhaps inside a character: drop its trailing bytes.
+            while let first = data.first, first & 0xC0 == 0x80 { data.removeFirst() }
+        }
+        return String(decoding: data, as: UTF8.self)
     }
 }

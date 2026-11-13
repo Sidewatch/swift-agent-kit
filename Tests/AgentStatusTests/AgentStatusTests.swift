@@ -218,6 +218,14 @@ final class AgentStatusTests: XCTestCase {
         XCTAssertEqual(TerminalStatus.agentName("2.1.223", path: "/Users/me/.local/share/claude/versions/2.1.223"), "claude")
         XCTAssertEqual(TerminalStatus.agentName("node", args: "node ~/.npm/pi/cli.js"), "pi")
         XCTAssertNil(TerminalStatus.agentName("zsh"))
+        // A program that is not a runtime is never named by its arguments: these name a user, a
+        // host, a container and a database.
+        for line in ["ssh pi@raspberrypi.local", "ssh claude", "docker exec -it goose bash", "psql amp", "vim /tmp/codex/notes.md"] {
+            let name = String(line.prefix { $0 != " " })
+            XCTAssertNil(TerminalStatus.agentName(name, path: "/usr/bin/" + name, args: line), line)
+        }
+        XCTAssertEqual(
+            TerminalStatus.agentName("dist", args: "/opt/homebrew/bin/node /x/node_modules/@google/gemini-cli/dist/index.js"), "gemini")
         XCTAssertNil(
             TerminalStatus.agentName("vim", path: "/Users/me/claude-notes/vim"), "a folder starting with an agent's name is not one")
     }
