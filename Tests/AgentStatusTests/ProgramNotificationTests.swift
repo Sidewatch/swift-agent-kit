@@ -67,4 +67,23 @@ final class ProgramNotificationTests: XCTestCase {
         XCTAssertEqual(AgentSendPolicy.returnDelay(forAgent: "Copilot"), 0.3)
         XCTAssertGreaterThan(AgentSendPolicy.returnDelay(forAgent: "copilot"), AgentSendPolicy.returnDelay(forAgent: "codex"))
     }
+
+    func testATabIsNamedByThePersonThenTheAgentsOwnTitleThenWhatItWasAsked() {
+        func title(custom: String? = nil, program: String = "codex", titled: Bool = false, prompt: String? = nil) -> String {
+            TerminalTabTitle.title(custom: custom, program: program, agentTitledItself: titled, prompt: prompt)
+        }
+        XCTAssertEqual(title(prompt: "Fix the login redirect"), "Fix the login redirect")
+        XCTAssertEqual(title(custom: "backend", prompt: "Fix the login redirect"), "backend", "a name the person gave stands")
+        XCTAssertEqual(
+            title(program: "✳ Login redirect", titled: true, prompt: "Fix the login redirect"), "✳ Login redirect",
+            "an agent's own title stands")
+        XCTAssertEqual(title(prompt: nil), "codex")
+        XCTAssertEqual(title(prompt: "   \n\t"), "codex", "a prompt with nothing in it names nothing")
+        XCTAssertEqual(title(custom: "", prompt: "x"), "x")
+        XCTAssertEqual(TerminalTabTitle.clipped("\n  first   real\tline  \nsecond"), "first real line")
+        let long = TerminalTabTitle.clipped(String(repeating: "word ", count: 30))
+        XCTAssertEqual(long?.count, TerminalTabTitle.promptLimit)
+        XCTAssertEqual(long?.last, "…")
+        XCTAssertNil(TerminalTabTitle.clipped(""))
+    }
 }

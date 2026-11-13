@@ -12,6 +12,7 @@ A reader for terminal AI coding-agent session transcripts. It maps an agent's on
 - **Telemetry** — context fill % (`AgentUsage.contextPercent`), output tokens, and estimated USD cost, deduplicated per API response
 - **Edited files** — the files a session wrote; `Agents.editedFiles(for:)` unions every agent's in a folder.
 - **Several agents at once** — `Agents.resolve(candidates:preferring:under:)` reads the agent named (the one in the terminal in use) when it has a session there, else the most recently active, and falls back to a session launched in a subfolder of the project (Claude Code, Codex, Gemini — registered projects — and Grok); the hit carries the adapter, the session's folder and the transcript. `Agents.adapter(forProcess:)` maps a terminal's process name to its reader.
+- **What each terminal's agent was asked** — `TerminalPrompts.latest(for:)`: the last prompt of a terminal's agent, only where the session is certainly that terminal's (one terminal runs that agent in that folder, and the folder's newest session was written since the terminal first showed the agent); anything else gives nothing rather than a guess
 - **Fully tested** — synthetic-transcript tests including malformed, truncated, and garbage input
 - **Small** — Foundation plus one family package, swift-foundation-extensions (its FoundationExtensions module)
 
