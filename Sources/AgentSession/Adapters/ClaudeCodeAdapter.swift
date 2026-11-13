@@ -35,7 +35,7 @@ public struct ClaudeCodeAdapter: AgentAdapter {
 
     /// The files the session's sub-agents wrote, read from their own transcripts. A reference type,
     /// shared by copies as the cache is.
-    private let subagents = ClaudeSubagentEdits()
+    private let subagents = ClaudeSubagents()
 
     /// Creates an adapter that reads the real `~/.claude/projects` container.
     public init() { self.init(projectsRoot: ClaudeSessionIndex.defaultProjectsRoot) }
@@ -68,18 +68,29 @@ public struct ClaudeCodeAdapter: AgentAdapter {
     }
 
     /// The activity timeline parsed from the latest transcript, oldest first, capped to the most
-    /// recent ``EventBuffer/cap`` events. Malformed lines are skipped.
+    /// recent ``EventBuffer/cap`` events. Malformed lines are skipped. A call that started a
+    /// sub-agent carries what the sub-agent did (``TimelineEvent/subagent``).
     /// - Note: The *first* call on a large session parses the whole file, so call off the
     ///   main thread.
     public func events(for root: URL) -> [TimelineEvent] {
-        cache.results(for: latestSession(for: root)).events
+        guard let session = latestSession(for: root) else { return [] }
+        return events(fromSession: session)
     }
 
     /// The activity timeline parsed from one transcript file, bypassing the `~/.claude/projects`
     /// lookup entirely — the seam that lets this adapter be exercised against a checked-in
     /// fixture rather than a live session.
     public func events(fromSession url: URL) -> [TimelineEvent] {
-        cache.results(for: url).events
+        let events = cache.results(for: url).events
+        // What a sub-agent did is in its own transcript; it is shown on the call that started it.
+        let work = subagents.work(forSession: url)
+        guard !work.isEmpty else { return events }
+        return events.map { event in
+            guard let call = event.toolUseID, let done = work[call] else { return event }
+            var event = event
+            event.subagent = done
+            return event
+        }
     }
 
     /// The files the latest session edited, its sub-agents' edits included (each sub-agent writes

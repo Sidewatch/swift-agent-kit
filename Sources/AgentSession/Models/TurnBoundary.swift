@@ -93,7 +93,9 @@ public struct TurnBoundary: Equatable {
         turns.last { $0.start <= index && index <= $0.end }
     }
 
-    /// The distinct files edited during this turn, in first-touched order.
+    /// The distinct files edited during this turn, in first-touched order: the agent's own edits
+    /// and those of the sub-agents it started in the turn (a sub-agent left running in the
+    /// background may still be writing after the turn ends; its files are this turn's).
     ///
     /// - Parameter events: The timeline the turn indexes into.
     /// - Returns: Repo-relative paths, deduplicated.
@@ -101,8 +103,8 @@ public struct TurnBoundary: Equatable {
         guard start <= end, events.indices.contains(start), events.indices.contains(end) else { return [] }
         var seen = Set<String>()
         var files: [String] = []
-        for event in events[start...end] where event.kind == .fileEdit {
-            if let path = event.filePath, seen.insert(path).inserted { files.append(path) }
+        for event in events[start...end] {
+            for path in event.filesWritten where seen.insert(path).inserted { files.append(path) }
         }
         return files
     }

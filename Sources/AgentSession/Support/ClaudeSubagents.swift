@@ -10,28 +10,43 @@
 
 import Foundation
 
-/// The files a Claude Code session's sub-agents wrote. A sub-agent's tool calls are not in the
-/// session's own transcript: each sub-agent writes `<session>/subagents/agent-<id>.jsonl` beside
-/// `<session>.jsonl`, in the transcript's line format. A session that hands its work to sub-agents
-/// edits most of its files there, so a reader of the session alone misses them.
+/// What a Claude Code session's sub-agents did. A sub-agent's tool calls are not in the session's
+/// own transcript: each sub-agent writes `<session>/subagents/agent-<id>.jsonl` beside
+/// `<session>.jsonl`, in the transcript's line format, with `agent-<id>.meta.json` naming the tool
+/// call that started it. A session that hands its work to sub-agents edits most of its files there,
+/// so a reader of the session alone misses them.
 ///
-/// Each file is read once and then only for what was appended: a finished sub-agent's file costs a
-/// `stat` per poll. One session's files are remembered at a time.
-final class ClaudeSubagentEdits: @unchecked Sendable {
-    /// What is remembered of one sub-agent's transcript.
+/// Each transcript is read once and then only for what was appended: a finished sub-agent costs a
+/// `stat` per poll. A few sessions are remembered at a time (several agents may run at once).
+final class ClaudeSubagents: @unchecked Sendable {
+    /// What is remembered of one sub-agent.
     private struct Entry {
         var inode: UInt64
-        var size: UInt64
         /// The first byte not yet read; always at the start of a line.
-        var offset: UInt64
-        var edited: Set<String>
+        var offset: UInt64 = 0
+        var toolCalls = 0
+        var edited: [String] = []
+        var editedSet = Set<String>()
+        /// The tool call that started it, its kind and whether it has finished, from its meta file.
+        var toolUseID: String?
+        var type = ""
+        var finished = false
+        var metaRead: Date?
+    }
+
+    /// What is remembered of one session.
+    private struct Session {
+        var entries: [String: Entry] = [:]
+        var servedAt = Date()
     }
 
     /// The longest line that is parsed; a longer one is passed over (``TranscriptCache/lineCap``).
     static var lineCap: Int { 4 << 20 }
-    /// The most bytes read from one file in one poll, so a first read of a long transcript is taken
-    /// in pieces rather than held whole.
+    /// The most bytes read from one file in one piece, so a first read of a long transcript is
+    /// taken in pieces rather than held whole.
     static var chunk: Int { 8 << 20 }
+    /// How many sessions are remembered; the least recently asked for goes first.
+    static var capacity: Int { 4 }
     /// The bytes every line with a tool call in it contains; other lines are not decoded.
     private static let toolUseMark = Data("\"tool_use\"".utf8)
 
@@ -46,8 +61,7 @@ final class ClaudeSubagentEdits: @unchecked Sendable {
 
     private let lock = NSLock()
     private let reader = DirectoryReader()
-    private var session: String?
-    private var entries: [String: Entry] = [:]
+    private var sessions: [String: Session] = [:]
     private var bytes = 0
 
     /// Test seam: the transcript bytes read so far.
@@ -61,33 +75,60 @@ final class ClaudeSubagentEdits: @unchecked Sendable {
     /// The files the sub-agents of `session` wrote; empty when it has none.
     func editedFiles(forSession session: URL) -> Set<String> {
         lock.lock(); defer { lock.unlock() }
-        if self.session != session.path {
-            self.session = session.path
-            entries = [:]
+        return refreshed(session).values.reduce(into: Set<String>()) { $0.formUnion($1.editedSet) }
+    }
+
+    /// Each sub-agent's work, by the id of the tool call that started it. A sub-agent whose meta
+    /// file does not name its call is left out: there is no call to show it under.
+    func work(forSession session: URL) -> [String: SubagentWork] {
+        lock.lock(); defer { lock.unlock() }
+        var work: [String: SubagentWork] = [:]
+        for entry in refreshed(session).values {
+            guard let call = entry.toolUseID else { continue }
+            work[call] = SubagentWork(type: entry.type, toolCalls: entry.toolCalls, editedFiles: entry.edited, isFinished: entry.finished)
         }
+        return work
+    }
+
+    /// Reads what the session's sub-agents have written since the last poll, within the budget.
+    private func refreshed(_ session: URL) -> [String: Entry] {
+        var state = sessions[session.path] ?? Session()
         let files = (reader.contents(of: Self.folder(forSession: session)) ?? [])
             .filter { $0.pathExtension == "jsonl" && $0.lastPathComponent.hasPrefix("agent-") }
         var live = Set<String>()
-        var edited = Set<String>()
         let spent = bytes
         for file in files {
             live.insert(file.path)
             guard let stat = FileStat(path: file.path) else { continue }
-            var entry = entries[file.path] ?? Entry(inode: stat.inode, size: 0, offset: 0, edited: [])
+            var entry = state.entries[file.path] ?? Entry(inode: stat.inode)
             // Replaced or cut short: not the file that was read, so it is read again from its start.
-            if entry.inode != stat.inode || stat.size < entry.offset {
-                entry = Entry(inode: stat.inode, size: 0, offset: 0, edited: [])
-            }
+            if entry.inode != stat.inode || stat.size < entry.offset { entry = Entry(inode: stat.inode) }
             if stat.size > entry.offset, bytes - spent < budget { readAppended(file.path, upTo: stat.size, into: &entry) }
-            entry.size = stat.size
-            entries[file.path] = entry
-            edited.formUnion(entry.edited)
+            if !entry.finished { readMeta(of: file, into: &entry) }
+            state.entries[file.path] = entry
         }
-        entries = entries.filter { live.contains($0.key) }
-        return edited
+        state.entries = state.entries.filter { live.contains($0.key) }
+        state.servedAt = Date()
+        sessions[session.path] = state
+        while sessions.count > Self.capacity, let oldest = sessions.min(by: { $0.value.servedAt < $1.value.servedAt }) {
+            sessions[oldest.key] = nil
+        }
+        return state.entries
     }
 
-    /// Reads the complete lines between `entry.offset` and `size`, a chunk at a time.
+    /// Reads `agent-<id>.meta.json` beside a transcript when it has changed since it was last read.
+    private func readMeta(of transcript: URL, into entry: inout Entry) {
+        let meta = transcript.deletingPathExtension().appendingPathExtension("meta.json")
+        guard let stat = FileStat(path: meta.path), stat.mtime != entry.metaRead || entry.metaRead == nil,
+            stat.size <= 1 << 20, let data = try? Data(contentsOf: meta), let object = JSONFile.object(from: data)
+        else { return }
+        entry.metaRead = stat.mtime
+        entry.toolUseID = object["toolUseId"] as? String
+        entry.type = object["agentType"] as? String ?? ""
+        entry.finished = object["finished"] as? Bool ?? false
+    }
+
+    /// Reads the complete lines between `entry.offset` and `size`, a piece at a time.
     private func readAppended(_ path: String, upTo size: UInt64, into entry: inout Entry) {
         guard let handle = FileHandle(forReadingAtPath: path) else { return }
         defer { try? handle.close() }
@@ -106,7 +147,10 @@ final class ClaudeSubagentEdits: @unchecked Sendable {
             for line in Self.linesWithToolCalls(in: data, upTo: lastBreak - data.startIndex) {
                 var state = ClaudeTranscriptState()
                 state.ingest(lineData: line)
-                entry.edited.formUnion(state.summaryResult.editedFiles)
+                entry.toolCalls += state.eventsResult.count { $0.kind == .toolUse || $0.kind == .fileEdit }
+                for path in state.summaryResult.editedFiles.sorted() where entry.editedSet.insert(path).inserted {
+                    entry.edited.append(path)
+                }
             }
             entry.offset += UInt64(lastBreak - data.startIndex + 1)
         }

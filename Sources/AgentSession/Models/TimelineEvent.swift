@@ -92,6 +92,15 @@ public struct TimelineEvent: Equatable, Sendable {
     /// How many trailing characters of a tool result are kept.
     public static let resultCap = 6_000
 
+    /// For the tool call that started a sub-agent, what that sub-agent did, read from its own
+    /// transcript; nil for every other entry and for an agent whose sub-agents are not read.
+    public var subagent: SubagentWork?
+
+    /// The files this entry wrote: its own for a file edit, its sub-agent's for a call that started one.
+    public var filesWritten: [String] {
+        (kind == .fileEdit ? [filePath].compactMap { $0 } : []) + (subagent?.editedFiles ?? [])
+    }
+
     /// For a prompt or a reply, its whole text (`detail` is only the first line), kept to its
     /// first ``fullTextCap`` characters so a pasted log cannot hold the timeline's memory.
     public let fullText: String?

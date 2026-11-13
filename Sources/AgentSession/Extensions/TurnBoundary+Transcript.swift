@@ -37,7 +37,7 @@ extension TurnBoundary {
             doc += replies.joined(separator: "\n\n---\n\n") + "\n"
         }
         var seen = Set<String>()
-        let files = span.compactMap { $0.kind == .fileEdit ? $0.filePath : nil }.filter { seen.insert($0).inserted }
+        let files = span.flatMap(\.filesWritten).filter { seen.insert($0).inserted }
         if !files.isEmpty {
             doc +=
                 "\n## "

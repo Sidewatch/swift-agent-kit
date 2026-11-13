@@ -40,6 +40,7 @@ public struct AwayDigest: Sendable, Equatable {
                 if let path = event.filePath { editedFiles.insert(path) } else { toolRuns += 1 }
             case .toolUse:
                 toolRuns += 1
+                editedFiles.formUnion(event.subagent?.editedFiles ?? [])
             case .userPrompt, .assistantText:
                 break
             }
