@@ -41,4 +41,30 @@ final class ProgramNotificationTests: XCTestCase {
         XCTAssertNil(PastePolicy.commandsTyped(by: "a\n", bracketed: false), "one line, its Return included")
         XCTAssertNil(PastePolicy.commandsTyped(by: "", bracketed: false))
     }
+
+    func testAnOSC9MessageIsANotificationAndConEmusNumberedCommandsAreNot() {
+        XCTAssertEqual(ProgramNotification(osc9: Array("Turn complete".utf8)), ProgramNotification(title: "", body: "Turn complete"))
+        XCTAssertEqual(
+            ProgramNotification(osc9: Array("done; 3 files changed".utf8))?.body, "done; 3 files changed", "a later ; is the message's")
+        for progress in ["4;1;50", "4;0", "1;500", "2;text", "9;/Users/me", "4"] {
+            XCTAssertNil(ProgramNotification(osc9: Array(progress.utf8)), "ConEmu's 9;\(progress) is not a notification")
+        }
+        XCTAssertNil(ProgramNotification(osc9: Array("".utf8)))
+        XCTAssertNil(ProgramNotification(osc9: Array("   ".utf8)))
+        XCTAssertNil(ProgramNotification(osc9: [0xFF, 0xFE]))
+        XCTAssertEqual(
+            ProgramNotification(osc9: Array("3 tests failed".utf8))?.body, "3 tests failed",
+            "a message that starts with a number and a space")
+        let untitled = ProgramNotification(title: "", body: "Turn complete")
+        XCTAssertEqual(untitled.displayTitle(program: "codex"), "codex", "an untitled notice is titled by its sender")
+        XCTAssertEqual(untitled.displayTitle(program: nil), "")
+        XCTAssertEqual(ProgramNotification(title: "Build", body: "ok").displayTitle(program: "claude"), "claude: Build")
+    }
+
+    func testReturnFollowsAPasteAfterTheAgentsOwnDelay() {
+        XCTAssertEqual(AgentSendPolicy.returnDelay(forAgent: "claude"), AgentSendPolicy.returnDelay)
+        XCTAssertEqual(AgentSendPolicy.returnDelay(forAgent: nil), AgentSendPolicy.returnDelay)
+        XCTAssertEqual(AgentSendPolicy.returnDelay(forAgent: "Copilot"), 0.3)
+        XCTAssertGreaterThan(AgentSendPolicy.returnDelay(forAgent: "copilot"), AgentSendPolicy.returnDelay(forAgent: "codex"))
+    }
 }

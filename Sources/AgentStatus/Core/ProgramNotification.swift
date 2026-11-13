@@ -34,11 +34,24 @@ public struct ProgramNotification: Equatable, Sendable {
         self.init(title: parts[1], body: parts[2...].joined(separator: ";"))
     }
 
+    /// The notification in an OSC 9 payload (the bytes after `9;`): iTerm2's "post a notification",
+    /// which several agents send when a turn ends. It has a message and no title. Nil for ConEmu's
+    /// use of the same code, whose payload begins with a number (`4;1;50` is a progress report,
+    /// `1;500` a sleep, `2;text` a message box): those are not notifications. Nil for an empty
+    /// message and for bytes that are not UTF-8.
+    public init?(osc9 payload: some Sequence<UInt8>) {
+        guard let text = String(bytes: Array(payload), encoding: .utf8) else { return nil }
+        let first = text.prefix { $0 != ";" }
+        guard !text.trimmingCharacters(in: .whitespaces).isEmpty, first.isEmpty || !first.allSatisfy(\.isNumber) else { return nil }
+        self.init(title: "", body: text)
+    }
+
     /// The title as a notification shows it: prefixed with the program that asked ("claude: Build
     /// finished"), so a program cannot pass itself off as another or as the host; the bare title when
     /// the program is unknown.
     public func displayTitle(program: String?) -> String {
         guard let program = program?.trimmingCharacters(in: .whitespaces), !program.isEmpty else { return title }
-        return "\(program): \(title)"
+        // An untitled notice (OSC 9) is titled by who sent it alone.
+        return title.isEmpty ? program : "\(program): \(title)"
     }
 }

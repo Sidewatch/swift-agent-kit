@@ -62,4 +62,19 @@ public enum AgentSendPolicy {
         if redirectsToSingleAgent, live.count == 1 { return Verdict(target: live[0], submits: true) }
         return Verdict(target: current ?? terminals.first?.id, submits: false)
     }
+
+    // MARK: - Pressing Return after the paste
+
+    /// How long after a paste Return follows, for most agents: long enough that the agent's input
+    /// box has taken the paste in before the key arrives, or the Return lands inside it as a line break.
+    public static let returnDelay: TimeInterval = 0.06
+    /// Agents whose input box takes longer to settle after a paste. The values are measured by
+    /// use, not documented by the agents, and may need to move with their releases.
+    public static let slowReturnDelays: [String: TimeInterval] = ["copilot": 0.3]
+
+    /// How long after pasting into `agent` (a canonical name from ``TerminalStatus/agentName(_:path:args:)``,
+    /// or nil when it is unknown) Return follows.
+    public static func returnDelay(forAgent agent: String?) -> TimeInterval {
+        agent.flatMap { slowReturnDelays[$0.lowercased()] } ?? returnDelay
+    }
 }
